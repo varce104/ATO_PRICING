@@ -125,7 +125,7 @@ iter = 11 # 1 for a single instance. >2 for several (mean results, odd number re
 # These instances include all but stages, scenario tree and lead time distribution.
 #=============================================
 
-inst = "Oh_et_al_2"
+inst = "Oh_et_al_1"
 
 #=============================================
 # "Oh_et_al_1" -> Simple W model (3x2) based on Oh et al. (2014)
@@ -142,7 +142,7 @@ inst = "Oh_et_al_2"
 # depending on their nature, thwy will be in either the models or the sol_approach folders.
 #=============================================
 
-Model = "MS_linear"
+Model = "Iterative_heuristic"
 
 #=============================================
 #   "MS" -> Standard multistage model (non-linear).
@@ -158,11 +158,6 @@ W_cts = True
 #   "Iterative_heuristic" -> iterative heuristic: iterates between solving pricing problem and inventory problem (features vector contains inventory levels from inventory problem)
 #=============================================
 #   "Benders" -> Benders with affine function approximation.
-#=============================================
-# POLICIES FROM LITERATURE (applied to MS_linear):
-#=============================================
-#   "MS_linear_HP" -> multistage with linealized revenue AND heuristic pricing policy (revenue minus holding cost).
-#   "MS_linear_OH_LIST" -> multistage with linealized revenue AND heuristic pricing policy (max expected revenue)
 #=============================================
 
 

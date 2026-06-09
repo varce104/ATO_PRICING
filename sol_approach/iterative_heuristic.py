@@ -113,7 +113,7 @@ def build_phi(ypsilon, delta, time, scenarios, prod, comp, I_fixed=None):
 
 def revenue_maximization_model(prod, time, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed):
     m_rev = gp.Model("Revenue_Max")
-    m_rev.setParam('OutputFlag', 0)
+    m_rev.setParam('OutputFlag', 1)
 
     rho = m_rev.addVars(prod, time, pr, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="rho")
     Gamma = m_rev.addVars(prod, time, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="Gamma")
@@ -146,25 +146,29 @@ def revenue_maximization_model(prod, time, scenarios, pr, price, D_term, pi, ext
     return m_rev, lambda_w
 
 
-def Iter_policy(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, max_iter=15, tol=1e-3):
+def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, max_iter=15, tol=1e-3):
     comp, prod, pr = len(A), len(A[0]), len(price)
 
-    K_features = (time - 1) * (1 + prod) + comp 
+    import time
+    start = time.time()
+
+
+    K_features = (stages - 1) * (1 + prod) + comp 
     
     D_term = {}
-    for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
+    for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
         D_term[j, t, p, s] = ypsilon[s][t] * (a - b * price[p]) + delta[s][j][t]
 
     print("\n--- PASO 1: Modelo Afín Lineal Base (I = 0) ---")
-    phi_init = build_phi(ypsilon, delta, time, scenarios, prod, comp, I_fixed=None)
+    phi_init = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed=None)
     
     m_af, x_af, lam_w, y_af, I_af, _, _, _, _ = MS_linear_affine(
-        seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, phi_init, K_features)
+        seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, phi_init, K_features)
     
-    m_af.setParam('OutputFlag', 0)
+    m_af.setParam('OutputFlag', 1)
     m_af.optimize()
     
-    w_bin = extract_solution_arrays_affine_w(lam_w, prod, time, scenarios, pr)
+    w_bin = extract_solution_arrays_affine_w(lam_w, prod, stages, scenarios, pr)
     best_obj = -np.inf
 
 
@@ -173,14 +177,14 @@ def Iter_policy(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b,
         print(f"\n--- ITERACIÓN {iteration} ---")
         
         m_lin, x_lin, w_lin, y_lin, I_lin, _, _ = MS_linear(
-            seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0)
+            seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0)
         
-        for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
+        for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
             val = float(w_bin[j, t, p, s])
             w_lin[j, t, p, s].LB = val
             w_lin[j, t, p, s].UB = val
             
-        m_lin.setParam('OutputFlag', 0)
+        m_lin.setParam('OutputFlag', 1)
         m_lin.optimize()
         
         obj_lin = m_lin.objVal
@@ -192,16 +196,19 @@ def Iter_policy(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b,
         best_obj = obj_lin
         
         # Extraer estados de inventario y decisiones de producción
-        I_fixed = {(i, t, s): I_lin[i, t, s].X for i, t, s in product(range(comp), range(time), range(scenarios))}
-        y_fixed = {(j, t, s): y_lin[j, t, s].X for j, t, s in product(range(prod), range(time), range(scenarios))}
+        I_fixed = {(i, t, s): I_lin[i, t, s].X for i, t, s in product(range(comp), range(stages), range(scenarios))}
+        y_fixed = {(j, t, s): y_lin[j, t, s].X for j, t, s in product(range(prod), range(stages), range(scenarios))}
         
-        extended_phi = build_phi(ypsilon, delta, time, scenarios, prod, comp, I_fixed)
+        extended_phi = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed)
         
         m_rev, lam_w_new = revenue_maximization_model(
-            prod, time, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed)
+            prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed)
             
         print(f"[*] Modelo Revenue Max (Política) Resuelto: {m_rev.objVal:.2f}")
         
-        w_bin = extract_solution_arrays_affine_w(lam_w_new, prod, time, scenarios, pr)
+        w_bin = extract_solution_arrays_affine_w(lam_w_new, prod, stages, scenarios, pr)
 
-    return m_lin, w_bin
+    end = time.time()
+    exec_time = end - start
+
+    return m_lin, w_bin, exec_time

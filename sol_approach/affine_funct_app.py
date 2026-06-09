@@ -21,21 +21,20 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
         phi = phi_init
     else:
         phi = {}
-
-    for s in range(scenarios):
-        phi[s] = {}
-        for t in range(time):
-            phi[s][t] = [] 
-            for tau in range(time - 1):
-                if tau < t:
-                    phi[s][t].append(ypsilon[s][tau])
-                    
-                    for j in range(prod):
-                        phi[s][t].append(delta[s][j][tau])
-                else:
-                    phi[s][t].append(0) 
-                    for j in range(prod):
+        for s in range(scenarios):
+            phi[s] = {}
+            for t in range(time):
+                phi[s][t] = [] 
+                for tau in range(time - 1):
+                    if tau < t:
+                        phi[s][t].append(ypsilon[s][tau])
+                        
+                        for j in range(prod):
+                            phi[s][t].append(delta[s][j][tau])
+                    else:
                         phi[s][t].append(0) 
+                        for j in range(prod):
+                            phi[s][t].append(0) 
     
     I = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, name="I", lb=0)
     x = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, name="x", lb=0)
@@ -58,12 +57,8 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
         m.addConstr(lambda_w[j, t, p, s] == rho[j, t, p] + prod_gamma_phi, name=f"def_lambda_{j}_{t}_{p}_{s}")
 
     D_term = {}
-    if np.isscalar(a):
-        for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
-            D_term[j, t, p, s] = ypsilon[s][t] * (a - b * price[p]) + delta[s][j][t]
-    else:
-        for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
-            D_term[j, t, p, s] = ypsilon[s][t] * (a[j] - gp.quicksum(b[j][k]* price[p] for k in range(prod))) + delta[s][j][t]
+    for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
+        D_term[j, t, p, s] = ypsilon[s][t] * (a - b * price[p]) + delta[s][j][t]
 
     f = (gp.quicksum(pi[s]*price[p]*r[j,t,p,s] for s in range(scenarios) for j in range(prod) for t in range(time) for p in range(pr)) -
         gp.quicksum(pi[s]*H[i]*I[i,t,s] for s in range(scenarios) for i in range(comp) for t in range(time)) -
@@ -134,5 +129,6 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
                 m.addConstr(y[j, t, s] == y[j, t, first], name=f"NAC_y_t{t}_g{g}")
         n_groups = n_groups * branch_factor 
     # m.setParam("Crossover",0) 
+
     m.setParam("BarHomogeneous", 1)
     return m, x, lambda_w, y, I, A, D_term, rho, Gamma

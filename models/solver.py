@@ -8,7 +8,7 @@ from sol_approach.linealization_prop import MS_linear
 from sol_approach.affine_funct_app import MS_linear_affine
 from sol_approach.twostage_affine import TS_linear_affine
 from sol_approach.Benders.benders import Benders_dec
-from sol_approach.iterative_heuristic import iterative_pricing_inventory
+from sol_approach.iterative_heuristic import Iter_policy, iterative_pricing_inventory
 
 from sol_approach.price_policies.price_heuristic import price_heuristic, apply_price_heuristic_to_model
 from sol_approach.price_policies.price_heuristic import price_heuristic_oh, apply_oh_heuristic_to_model
@@ -50,13 +50,10 @@ def extract_params(size, bom, costs, price_param, demand, lead_times):
     if I0 is None: 
         I0 = [0] * comp
     else: # input I0 is a scalar value
-        if np.isscalar(a):
-            I0 = [gp.quicksum((a - b * I0)*A[i][j] for j in range(prod)) for i in range(comp)]
-        else:
-            I0 = [gp.quicksum((a[0] - b[0][0] * I0)*A[i][j] for j in range(prod)) for i in range(comp)]
-            # I0 = [gp.quicksum((a[j] - gp.quicksum(b[j][k]* I0[k] for k in range(prod)))*A[i][j] for j in range(prod)) for i in range(comp)]
+        I0 = [gp.quicksum((a - b * I0)*A[i][j] for j in range(prod)) for i in range(comp)]
 
     return C, H, pi, A, price, mult, add, L, a, b, I0
+
 
 
 def solve(size, bom, costs, price_param, demand, lead_times, show):
@@ -104,7 +101,7 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
         
 
     elif Model == "Iterative_heuristic":
-        m, obj, ex_time = iterative_pricing_inventory(seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
+        m, obj, ex_time = Iter_policy(seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         return {"incumbent": obj, "bestbd": None, "gap": None, "time": ex_time, "vss": -1, "evpi": -1, "vss_ts": -1}
         
 
@@ -114,35 +111,7 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
         return None
 
 #=====================================================================================================================================
-# pricing policies from literature
-#=====================================================================================================================================
 
-#   "MS_linear_HP2" -> multistage with linealized revenue AND heuristic pricing policy 3 (myopic markup).
-#   "MS_linear_HP3" -> multistage with linealized revenue AND heuristic pricing policy 4 (lower bound price floor).
-
-    elif Model in ("MS_linear_HP", "MS_linear_HP2", "MS_linear_HP3"):
-        m, x_vars, w_vars, y_vars, I_vars, A, D_term = MS_linear(
-            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-
-        heuristic_method = Model.split("_")[-1]  # "HP", "HP2", "HP3"
-
-        w_fixed = price_heuristic(prod, stages, scenarios, price, a, b, mult, add, pi, C, H, A, method=heuristic_method)
-
-        apply_price_heuristic_to_model(m, w_vars, w_fixed, prod, stages, len(price), scenarios)
-    
-    
-    elif Model in ("MS_linear_OH_LIST"):
-        # Build the linearized MS model (same structure as MS_linear)
-        m, x_vars, w_vars, y_vars, I_vars, A, D_term = MS_linear(
-            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-
-        heuristic_method = "_".join(Model.split("_")[2:])  # "OH_LIST"
-
-        w_fixed = price_heuristic_oh(prod, stages, scenarios, price, a, b, mult, add, pi, C, H, A, I0, method=heuristic_method)
-
-        apply_oh_heuristic_to_model(m, w_vars, w_fixed, prod, stages, len(price), scenarios)
-
-#=====================================================================================================================================
     else:
         print("\nWrong input, try again...")
         return None

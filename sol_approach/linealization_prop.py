@@ -23,17 +23,9 @@ def MS_linear(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C
     r = m.addVars(prod, time, pr, scenarios, vtype=GRB.CONTINUOUS, name="r", lb=0)
 
     D_term = {}
-    # for j,t,s in product(range(prod), range(time), range(scenarios)):
-    #     P_expr = gp.quicksum(price[p] * w[j, t, p, s] for p in range(pr))
-    #     D_term[j, t, s] = ypsilon[s][t] * (a - b * P_expr) + delta[s][j][t]
+    for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
+        D_term[j, t, p, s] = ypsilon[s][t] * (a - b * price[p]) + delta[s][j][t]
 
-    if np.isscalar(a):
-        for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
-            # P_expr = gp.quicksum(price[p] * w[j, t, p, s] for p in range(pr)) # heredado del modelo previo, no corresponde la suma
-            D_term[j, t, p, s] = ypsilon[s][t] * (a - b * price[p]) + delta[s][j][t]
-    else:
-        for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
-            D_term[j, t, p, s] = ypsilon[s][t] * (a[j] - gp.quicksum(b[j][k] * price[p] * w[k, t, p, s] for k in range(prod))) + delta[s][j][t]
 
     f = (gp.quicksum(pi[s]*price[p]*r[j,t,p,s] for s in range(scenarios) for j in range(prod) for t in range(time) for p in range(pr)) -
         gp.quicksum(pi[s]*H[i]*I[i,t,s] for s in range(scenarios) for i in range(comp) for t in range(time)) -
