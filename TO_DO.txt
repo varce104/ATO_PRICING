@@ -1,0 +1,44 @@
+Meeting 21/05: (In order of priority)
+
+> Solve MS_affine as a two-stage and pass the policy to MS_linear (Maybe maintaint this for bigger instances to see the performance) [OK!]
+    - Correcto approach: solve MS_affine -> fix policy into MS_linear -> solve MS_linear (Total time is comprised os time for all these 3 processes)
+
+> Implement iterative heuristic (missed it, but OK!)
+    - Sort of a loop between pricing problem and inventory management (for the affine problem). Did it: iteration between app. pricing policy from MS_affine
+        and replenishment policy from MS_linear. Iterates until max iteration or find good enough Obj value (or pricing policy)
+
+> Define bigger instance (from Oh et al or other ATO articles) [OK, pending 11x11]
+    - second instance 5x4, third instance 11x11 (too big, but still maintaining it)
+
+> Keep exploring and define better and clearly policies found [PENDING, URGENT!!!]
+    - This far two are relatively the same, keep exploring in pricing literature and redact a literature review, with special focus on the two
+      implemented.
+
+> Explore idea of Rolling Horizon implementation of policy (?)
+> Explore for an affine rule between pricing and inventory lvl
+> in general an iterative process between pricing and inventory (Franco & Simon idea, bring something of your own to the table)
+
+> Redact paper 1st version (understand clearly affine approximation, in simple and in math level) [IMPORTANT, NOT URGENT!]
+
+
+
+
+Meeting 05/06:
+
+> Compare policies directly
+    - It is not comparable a binary pricing policy to a continuous one (w vs lambda). Find a way to do that
+
+> Rework on iteration
+    - The pricing-inventory iteration should work kinda like a benders, each problem (pricing and inventory) should solve separately. 
+        Find a way to do that
+
+> Implement Literature policy (Oh et al in particular)
+    - Put your shit together, study literature, identify policies (primarily related to pricing), implement them
+
+> Keep exploring and define better and clearly policies found [PENDING, URGENT!!!]
+    - This far two are relatively the same, keep exploring in pricing literature and redact a literature review, with special focus on the two
+      implemented.
+
+
+
+Meeting 08/06: (?¿)
