@@ -111,7 +111,7 @@ def build_phi(ypsilon, delta, time, scenarios, prod, comp, I_fixed=None):
     return phi
 
 
-def revenue_maximization_model(prod, time, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed):
+def revenue_max(prod, time, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed):
     m_rev = gp.Model("Revenue_Max")
     m_rev.setParam('OutputFlag', 1)
 
@@ -201,7 +201,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         
         extended_phi = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed)
         
-        m_rev, lam_w_new = revenue_maximization_model(
+        m_rev, lam_w_new = revenue_max(
             prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed)
             
         print(f"[*] Modelo Revenue Max (Política) Resuelto: {m_rev.objVal:.2f}")

@@ -19,7 +19,7 @@ def MS_linear(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C
 
     I = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, name="I", lb=0)
     x = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, name="x", lb=0)
-    y = m.addVars(prod, time, scenarios, vtype=GRB.CONTINUOUS, name="y", lb=0)
+    y = m.addVars(prod, time, scenarios, vtype=GRB.CONTINUOUS, name="y", lb=0) 
     r = m.addVars(prod, time, pr, scenarios, vtype=GRB.CONTINUOUS, name="r", lb=0)
 
     D_term = {}
