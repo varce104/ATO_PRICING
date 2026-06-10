@@ -4,8 +4,8 @@ from data.params import parametros, bill_of_materials, price_set
 from models.multistage import Multistage_problem
 from models.multistage_FP import Multistage_problem_Fix_price
 
-from sol_approach.linealization_prop import MS_linear
-from sol_approach.affine_funct_app import MS_linear_affine
+from models.linealization_prop import MS_linear
+from models.affine_funct_app import MS_linear_affine
 from sol_approach.twostage_affine import TS_linear_affine
 from sol_approach.Benders.benders import Benders_dec
 from sol_approach.iterative_heuristic import Iter_policy, iterative_pricing_inventory

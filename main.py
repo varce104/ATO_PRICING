@@ -110,8 +110,8 @@ show_boxplot = False   # Save boxplot to figures for every decision variable
 show_candlestick = False   # Save candlestick to figures for every decision variable
 #=============================================
 time_limit = 900
-seed = 6
-iter = 10 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+seed = 5
+iter = 11 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
@@ -125,7 +125,7 @@ iter = 10 # 1 for a single instance. >2 for several (mean results, odd number re
 # These instances include all but stages, scenario tree and lead time distribution.
 #=============================================
 
-inst = "Oh_et_al_1"
+inst = "Oh_et_al_2"
 
 #=============================================
 # "Oh_et_al_1" -> Simple W model (3x2) based on Oh et al. (2014)
