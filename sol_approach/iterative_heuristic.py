@@ -159,7 +159,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
         D_term[j, t, p, s] = ypsilon[s][t] * (a - b * price[p]) + delta[s][j][t]
 
-    print("\n--- PASO 1: Modelo Afín Lineal Base (I = 0) ---")
+    print("\n--- PASO 1: Modelo Afín Lineal Base (I = 0) ---\n")
     phi_init = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed=None)
     
     m_af, x_af, lam_w, y_af, I_af, _, _, _, _ = MS_linear_affine(
@@ -174,7 +174,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
 
     
     for iteration in range(1, max_iter + 1):
-        print(f"\n--- ITERACIÓN {iteration} ---")
+        print(f"\n--- ITERACIÓN {iteration} ---\n")
         
         m_lin, x_lin, w_lin, y_lin, I_lin, _, _ = MS_linear(
             seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0)
@@ -188,10 +188,10 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         m_lin.optimize()
         
         obj_lin = m_lin.objVal
-        print(f"[*] Evaluación en MS_linear (Operación): {obj_lin:.2f}")
+        print(f"\n Evaluación en MS_linear (Operación): {obj_lin:.2f}\n")
         
         if (obj_lin - best_obj) <= tol:
-            print(f">>> Convergencia alcanzada. Sin mejoras marginales. <<<")
+            print(f"\n>>> Convergencia alcanzada. Sin mejoras marginales. <<<\n")
             break
         best_obj = obj_lin
         
@@ -204,7 +204,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         m_rev, lam_w_new = revenue_max(
             prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed)
             
-        print(f"[*] Modelo Revenue Max (Política) Resuelto: {m_rev.objVal:.2f}")
+        print(f"\n >>> Modelo Revenue Max (Política) Resuelto: {m_rev.objVal:.2f} <<<\n")
         
         w_bin = extract_solution_arrays_affine_w(lam_w_new, prod, stages, scenarios, pr)
 

@@ -110,8 +110,8 @@ show_boxplot = False   # Save boxplot to figures for every decision variable
 show_candlestick = False   # Save candlestick to figures for every decision variable
 #=============================================
 time_limit = 900
-seed = 5
-iter = 11 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+seed = 6
+iter = 10 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
@@ -149,7 +149,7 @@ Model = "Iterative_heuristic"
 #   "MS_FP" -> multistage with pricing as first stage decision.
 #=============================================
 #   "MS_linear" -> multistage with linealized revenue (MILP). 
-W_cts = True
+W_cts = False
 # true if w relaxed (probably non-convex but ok!)
 #=============================================
 #   "MS_linear_affine" -> multistage with linealized revenue AND affine pricing policy.
