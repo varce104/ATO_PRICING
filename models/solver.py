@@ -6,6 +6,8 @@ from models.multistage_FP import Multistage_problem_Fix_price
 
 from models.linealization_prop import MS_linear
 from models.affine_funct_app import MS_linear_affine
+
+from sol_approach.policy_eval import Affine_eval, Relaxed_eval
 from sol_approach.twostage_affine import TS_linear_affine
 from sol_approach.Benders.benders import Benders_dec
 from sol_approach.iterative_heuristic import Iter_policy, iterative_pricing_inventory
@@ -18,7 +20,6 @@ from uncertainty_analysis.sto_computation import uncertainty_analysis
 from output_config.results_output import export
 from output_config.lambda_export import fix_w_from_lambda, fix_w_from_lambda_partial
 
-import numpy as np
 import pandas as pd
 from itertools import product
 import gurobipy as gp
@@ -62,13 +63,15 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
     C, H, pi, A, price, mult, add, L, a, b, I0 = extract_params(size, bom, costs, price_param, demand, lead_times)
     _,_, det = lead_times
     show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts = show
-
+    
+    
     if inst is not None:
         comp = len(A); prod = len(A[0])
         print(f"\nInstance: {inst} | Components: {comp} | Products: {prod} | Stages: {stages} | Scenarios: {scenarios} | Iteration: {seed-4}")
 
-        
-    if Model == "MS":
+    solve_time = 0
+
+    if Model == "MS": #Non-linear model
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = Multistage_problem(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         if lambda_app:
@@ -83,7 +86,7 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = Multistage_problem_Fix_price(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         
-    elif Model == "MS_linear":
+    elif Model == "MS_linear": # Linear model (base model)
         print("\n--- Construyendo modelo linealizado ---", W_cts)
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = MS_linear(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, W_cts)
@@ -92,8 +95,17 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
             fix_w_from_lambda(m, w_vars, w_sim, prod, stages, len(price), scenarios)
 
     elif Model == "MS_linear_affine":
-        m, x_vars, w_vars, y_vars, I_vars, A, D_term, _, _ = MS_linear_affine(
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, rho, gamma = MS_linear_affine(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
+        
+        
+    elif Model == "Affine_eval":
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Affine_eval(
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
+
+    elif Model == "Relaxed_eval":
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Relaxed_eval(
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
     
     elif Model == "TS_linear_affine":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, _, _ = TS_linear_affine(
@@ -115,11 +127,14 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
     else:
         print("\nWrong input, try again...")
         return None
+    
 
     m.setParam('TimeLimit', time_limit)
     m.setParam('OutputFlag', 1)
-    m.Params.NonConvex = 2
-    # MS_linear with w continuous is non-convex. 0 to block non-convex models
+    # m.setParam('Method', 1)
+    m.setParam('BarHomogeneous', 1)
+
+    # m.Params.NonConvex = 2
 
     m.optimize()
     if m.status == GRB.OPTIMAL:
@@ -143,9 +158,11 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
         bestbd = None
         gap = None
 
+    opt_time = m.Runtime + solve_time
+
     vss, evpi, vss_ts = uncertainty_analysis(vss_calc, evpi_calc, vss_ts_calc, size, bom, costs, price_param, demand, lead_times, incumbent)
 
     solutions = [seed, x_vars, w_vars, I_vars, y_vars, D_term, price, stages, scenarios, A, det, lambda_app, Model]
     export(show_var, show_heatmap, show_boxplot, show_candlestick, solutions)
 
-    return {"incumbent": incumbent, "bestbd": bestbd, "gap": gap, "time": m.Runtime, "vss": vss, "evpi": evpi, "vss_ts": vss_ts}
+    return {"incumbent": incumbent, "bestbd": bestbd, "gap": gap, "time": opt_time, "vss": vss, "evpi": evpi, "vss_ts": vss_ts}

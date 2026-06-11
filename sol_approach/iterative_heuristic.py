@@ -121,9 +121,9 @@ def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_
     Gamma = m_rev.addVars(prod, stages, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="Gamma")
     lambda_w = m_rev.addVars(prod, stages, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="lambda_w")
 
-    r = m_rev.addVars(prod, stages, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="r")
+    y_bar = m_rev.addVars(prod, stages, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="r")
 
-    obj = gp.quicksum(pi[s] * price[p] * r[j,t,p,s] for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)))
+    obj = gp.quicksum(pi[s] * price[p] * y_bar[j,t,p,s] for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)))
     m_rev.setObjective(obj, GRB.MAXIMIZE)
 
     for j, t in product(range(prod), range(stages)):
@@ -135,10 +135,10 @@ def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_
         gamma_phi = gp.quicksum(Gamma[j, t, p, q] * extended_phi[s][t][q] for q in range(K_features))
         m_rev.addConstr(lambda_w[j, t, p, s] == rho[j, t, p] + gamma_phi)
         
-        m_rev.addConstr(r[j, t, p, s] <= lambda_w[j, t, p, s] * D_term[j, t, p, s])
+        m_rev.addConstr(y_bar[j, t, p, s] <= lambda_w[j, t, p, s] * D_term[j, t, p, s])
 
     for j, t, s in product(range(prod), range(stages), range(scenarios)):
-        m_rev.addConstr(gp.quicksum(r[j, t, p, s] for p in range(pr)) == y_fixed[j, t, s])
+        m_rev.addConstr(gp.quicksum(y_bar[j, t, p, s] for p in range(pr)) == y_fixed[j, t, s])
 
     t0 = time.time()
     m_rev.optimize()
@@ -198,7 +198,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         print(f"\n >>> Modelo Revenue Max (Política) Resuelto: {m_rev.objVal:.2f} <<<\n")
 
         # Paso B: extraer política binaria de precio
-        w_bin = extract_solution_arrays_affine_w(lam_w_new, prod, stages, scenarios, pr)
+        w_bin = extract_solution_arrays_affine_w(lam_w_new, prod, stages, scenarios, pr) # Modificar esto, se supone que debe mantenerse como lambda, y esta evaluarse en MS_linear_affine
 
         # Paso C: fijar precio en MS_linear y resolver operación
         m_lin, x_lin, w_lin, y_lin, I_lin, _, _ = MS_linear(

@@ -130,5 +130,5 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
         n_groups = n_groups * branch_factor 
     # m.setParam("Crossover",0) 
 
-    m.setParam("BarHomogeneous", 1)
+    # m.setParam("BarHomogeneous", 1)
     return m, x, lambda_w, y, I, A, D_term, rho, Gamma

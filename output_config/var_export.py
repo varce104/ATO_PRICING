@@ -38,6 +38,7 @@ def extract_solution_arrays(x_vars, w_vars, I_vals, y_vals, D_term, price, comp,
     return x_val, price_eff, I_vals, y_vals, d_vals
 
 
+
 def export_solution_to_excel(filename, x_val, p_eff, y_val, I_val, d_val, time, scenarios, A):
     comp, prod = len(A), len(A[0])
 
