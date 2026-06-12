@@ -4,7 +4,7 @@ from gurobipy import GRB
 import random
 from itertools import product
 
-def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0=None, phi_init=None, K_feat=None): 
+def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0=None, phi_init=None, K_feat=None, lambda_fix=False): 
     random.seed(seed)
     comp = len(A)
     prod = len(A[0])
@@ -46,15 +46,15 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
     Gamma = m.addVars(prod, time, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="Gamma")
     lambda_w = m.addVars(prod, time, pr, scenarios, vtype=GRB.CONTINUOUS, name="lambda_w", lb=0) 
 
-    for j, t in product(range(prod), range(time)):
-        m.addConstr(gp.quicksum(rho[j, t, p] for p in range(pr)) == 1, name=f"sum_rho_{j}_{t}")
-        
-        for q in range(K_features):
-            m.addConstr(gp.quicksum(Gamma[j, t, p, q] for p in range(pr)) == 0, name=f"sum_Gamma_{j}_{t}_{q}")
+    if lambda_fix == False:
+        for j, t in product(range(prod), range(time)):
+            m.addConstr(gp.quicksum(rho[j, t, p] for p in range(pr)) == 1, name=f"sum_rho_{j}_{t}")
+            for q in range(K_features):
+                m.addConstr(gp.quicksum(Gamma[j, t, p, q] for p in range(pr)) == 0, name=f"sum_Gamma_{j}_{t}_{q}")
 
-    for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
-        prod_gamma_phi = gp.quicksum(Gamma[j, t, p, q] * phi[s][t][q] for q in range(K_features))
-        m.addConstr(lambda_w[j, t, p, s] == rho[j, t, p] + prod_gamma_phi, name=f"def_lambda_{j}_{t}_{p}_{s}")
+        for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
+            prod_gamma_phi = gp.quicksum(Gamma[j, t, p, q] * phi[s][t][q] for q in range(K_features))
+            m.addConstr(lambda_w[j, t, p, s] == rho[j, t, p] + prod_gamma_phi, name=f"def_lambda_{j}_{t}_{p}_{s}")
 
     D_term = {}
     for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
@@ -128,7 +128,6 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
                 m.addConstrs((x[i, t, s] == x[i, t, first] for i in range(comp)), name=f"NAC_x_t{t}_g{g}")
                 m.addConstr(y[j, t, s] == y[j, t, first], name=f"NAC_y_t{t}_g{g}")
         n_groups = n_groups * branch_factor 
-    # m.setParam("Crossover",0) 
 
-    # m.setParam("BarHomogeneous", 1)
+
     return m, x, lambda_w, y, I, A, D_term, rho, Gamma

@@ -1,89 +1,12 @@
 import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
+import random
 from itertools import product
 from models.affine_funct_app import MS_linear_affine
 from models.linealization_prop import MS_linear
 from output_config.lambda_export import extract_solution_arrays_affine_w
 
-def fix_variables(model_vars, fixed_vals, is_dict=True):
-    if is_dict:
-        for key, val in fixed_vals.items():
-            model_vars[key].LB = val
-            model_vars[key].UB = val
-    else:
-        it = np.nditer(fixed_vals, flags=['multi_index'])
-        for val in it:
-            model_vars[it.multi_index].LB = val
-            model_vars[it.multi_index].UB = val
-
-
-def iterative_pricing_inventory(seed, time_periods, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, 
-                                pi, branching_structure, I0, max_iter=5, tol=1e-2):
-    import time
-
-    comp, prod, pr = len(A), len(A[0]), len(price)
-
-    print("\n--------- Iteracion 0: Resolviendo Modelo Afin Inicial ---------\n")
-    m_af, x_af, lam_w, y_af, I_af, _, D_af, rho, Gamma = MS_linear_affine(
-        seed, time_periods, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0)
-    start = time.time()
-    
-    m_af.setParam('OutputFlag', 1)
-    m_af.optimize()
-
-    
-    w_bin = extract_solution_arrays_affine_w(lam_w, prod, time_periods, scenarios, pr)
-    
-    
-
-    for iteration in range(1, max_iter + 1):
-        print(f"\n--------- Iteracion {iteration} ---------\n")
-        
-        m_lin, x_lin, w_lin, y_lin, I_lin, _, D_lin = MS_linear(
-            seed, time_periods, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0)
-        
-        fix_variables(w_lin, w_bin, is_dict=False)
-        
-        m_lin.setParam('OutputFlag', 1)
-        m_lin.optimize()
-        
-        if m_lin.status != GRB.OPTIMAL:
-            print("\n ##### Fase Inventario Infactible/No optima. Abortando #####\n")
-            break
-            
-        obj_lin = m_lin.objVal
-
-        print(f"\nObj Fase Inventario (Precio Fijo): {obj_lin}\n")
-        
-        x_fixed = {(i, t, s): x_lin[i, t, s].X for i in range(comp) for t in range(time_periods) for s in range(scenarios)}
-        
-        m_af, x_af, lam_w, y_af, _, _, _, rho, Gamma = MS_linear_affine(
-            seed, time_periods, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0)
-        
-        fix_variables(x_af, x_fixed, is_dict=True)
-        
-        m_af.setParam('OutputFlag', 1)
-        m_af.optimize()
-        
-        if m_af.status != GRB.OPTIMAL:
-            print("\n ##### Fase Precio Infactible/No óptima. Abortando #####\n")
-            break
-            
-        obj_af = m_af.objVal
-
-        print(f"\n--- Obj Fase Precio (Compras Fijas): {obj_af} ---\n")
-        
-        if abs(obj_af - best_obj) < tol:
-            print(f"\n ------ Convergencia alcanzada. Iteracion {iteration} ------\n")
-            break
-            
-        best_obj = obj_af
-        
-        w_bin = extract_solution_arrays_affine_w(lam_w, prod, time_periods, scenarios, pr)
-    end = time.time()
-    exec_time = end - start
-    return m_lin, obj_lin, exec_time
 
 
 def build_phi(ypsilon, delta, time, scenarios, prod, comp, I_fixed=None):
@@ -147,7 +70,10 @@ def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_
     if m_rev.status != GRB.OPTIMAL:
         raise ValueError("El modelo de Revenue Maximization es infactible.")
         
-    return m_rev, lambda_w, t1 - t0
+    lambda_val = {(j, t, p, s): lambda_w[j, t, p, s].X
+                 for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios))}
+    
+    return m_rev.ObjVal, lambda_val, t1 - t0
 
 
 
@@ -174,7 +100,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     solve_time = time.time() - t0
 
     if m_af.status != GRB.OPTIMAL:
-        raise ValueError("\nMS_linear_affine inicial no es óptimo.\n")
+        raise ValueError("\nMS_linear_affine inicial no es optimo.\n")
 
     # Extraer I e y de MS_linear_affine
     I_fixed = {(i, t, s): I_af[i, t, s].X 
@@ -186,7 +112,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     m_lin = None
 
     for iteration in range(1, max_iter + 1):
-        print(f"\n--- ITERACIÓN {iteration} ---\n")
+        print(f"\n--- ITERACION {iteration} ---\n")
 
         # Paso A: construir phi con inventario actual y resolver revenue_max
         extended_phi = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed)
@@ -195,19 +121,15 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
             prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed)
         solve_time += t_rev
 
-        print(f"\n >>> Modelo Revenue Max (Política) Resuelto: {m_rev.objVal:.2f} <<<\n")
+        print(f"\n >>> Modelo Revenue Max. Obj: {m_rev.objVal:.2f} <<<\n")
 
-        # Paso B: extraer política binaria de precio
-        w_bin = extract_solution_arrays_affine_w(lam_w_new, prod, stages, scenarios, pr) # Modificar esto, se supone que debe mantenerse como lambda, y esta evaluarse en MS_linear_affine
+        m_inv, _, lambda_w, y_lin, I_lin, _, _, _, _ = MS_linear_affine(
+            seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
+            branching_structure, I0, phi_init=extended_phi, K_feat=K_features)
 
-        # Paso C: fijar precio en MS_linear y resolver operación
-        m_lin, x_lin, w_lin, y_lin, I_lin, _, _ = MS_linear(
-            seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0)
-
-        for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
-            val = float(w_bin[j, t, p, s])
-            w_lin[j, t, p, s].LB = val
-            w_lin[j, t, p, s].UB = val
+        for j, t, p, q in product(range(prod), range(stages), range(pr), range(K_features)):
+            lam_w_new[j, t, p, q].LB = lambda_w[j, t, p, q]
+            lam_w_new[j, t, p, q].UB = lambda_w[j, t, p, q]
 
         m_lin.setParam('OutputFlag', 1)
 
