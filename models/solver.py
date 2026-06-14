@@ -10,7 +10,7 @@ from models.affine_funct_app import MS_linear_affine
 from sol_approach.policy_eval import Affine_eval, Relaxed_eval
 from sol_approach.twostage_affine import TS_linear_affine
 from sol_approach.Benders.benders import Benders_dec
-from sol_approach.iterative_heuristic import Iter_policy, iterative_pricing_inventory
+from sol_approach.iterative_heuristic import Iter_policy
 
 from sol_approach.price_policies.price_heuristic import price_heuristic, apply_price_heuristic_to_model
 from sol_approach.price_policies.price_heuristic import price_heuristic_oh, apply_oh_heuristic_to_model

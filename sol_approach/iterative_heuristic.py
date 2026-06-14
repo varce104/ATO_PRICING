@@ -1,6 +1,7 @@
 import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
+import pandas as pd
 import random
 from itertools import product
 from models.affine_funct_app import MS_linear_affine
@@ -35,7 +36,7 @@ def build_phi(ypsilon, delta, time, scenarios, prod, comp, I_fixed=None):
     return phi
 
 
-def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed):
+def revenue_max_v0(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed):
     import time
     m_rev = gp.Model("Revenue_Max")
     m_rev.setParam('OutputFlag', 1)
@@ -62,6 +63,8 @@ def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_
 
     for j, t, s in product(range(prod), range(stages), range(scenarios)):
         m_rev.addConstr(gp.quicksum(y_bar[j, t, p, s] for p in range(pr)) == y_fixed[j, t, s])
+    
+    m_rev.setParam('BarHomogeneous', 1)
 
     t0 = time.time()
     m_rev.optimize()
@@ -71,8 +74,44 @@ def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_
         raise ValueError("El modelo de Revenue Maximization es infactible.")
         
     lambda_val = {(j, t, p, s): lambda_w[j, t, p, s].X
-                 for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios))}
+                 for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios))}
     
+    return m_rev.ObjVal, lambda_val, t1 - t0
+
+def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed):
+    import time
+    m_rev = gp.Model("Revenue_Max")
+    m_rev.setParam('OutputFlag', 0)
+    m_rev.setParam('BarHomogeneous', 1)
+
+    rho     = m_rev.addVars(prod, stages, pr, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY)
+    Gamma   = m_rev.addVars(prod, stages, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY)
+    lambda_w = m_rev.addVars(prod, stages, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0)
+
+
+    m_rev.setObjective(gp.quicksum(pi[s] * price[p] * lambda_w[j, t, p, s] * y_fixed[j][t][s]
+                    for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios))),GRB.MAXIMIZE)
+
+    for j, t in product(range(prod), range(stages)):
+        m_rev.addConstr(gp.quicksum(rho[j, t, p] for p in range(pr)) == 1)
+        for q in range(K_features):
+            m_rev.addConstr(gp.quicksum(Gamma[j, t, p, q] for p in range(pr)) == 0)
+
+    for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
+        gamma_phi = gp.quicksum(Gamma[j, t, p, q] * extended_phi[s][t][q] for q in range(K_features))
+        m_rev.addConstr(lambda_w[j, t, p, s] == rho[j, t, p] + gamma_phi)
+
+    
+    t0 = time.time()
+    m_rev.optimize()
+    t1 = time.time()
+
+    if m_rev.status != GRB.OPTIMAL:
+        raise ValueError(f"revenue_max no óptimo (status={m_rev.status})")
+
+    lambda_val = {(j, t, p, s): lambda_w[j, t, p, s].X
+                  for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios))}
+
     return m_rev.ObjVal, lambda_val, t1 - t0
 
 
@@ -90,9 +129,10 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     print("\n--- PASO 1: MS_linear_affine inicial (I = 0 en phi) ---\n")
     phi_init = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed=None)
 
-    m_af, _, lam_w, y_af, I_af, _, _, _, _ = MS_linear_affine(
+    m_af, _, _, y_af, I_af, _, _, _, _ = MS_linear_affine(
         seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, phi_init, K_features)
-
+    
+    m_af.setParam('BarHomogeneous', 1)
     m_af.setParam('OutputFlag', 1)
 
     t0 = time.time()
@@ -108,8 +148,14 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     y_fixed = {(j, t, s): y_af[j, t, s].X 
                for j, t, s in product(range(prod), range(stages), range(scenarios))}
 
+    # Check y possible faults
+    df = pd.DataFrame([(j, t, s, val)for (j, t, s), val in y_fixed.items()], columns=["j", "t", "s", "valor"])
+    df_pivot = df.pivot_table(index=["j", "s"], columns="t", values="valor")
+    print(df_pivot)
+    #
+
     best_obj = -np.inf
-    m_lin = None
+
 
     for iteration in range(1, max_iter + 1):
         print(f"\n--- ITERACION {iteration} ---\n")
@@ -117,37 +163,39 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         # Paso A: construir phi con inventario actual y resolver revenue_max
         extended_phi = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed)
 
-        m_rev, lam_w_new, t_rev = revenue_max(
-            prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed)
+        m_rev, lam_w_new, t_rev = revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed)
+        
         solve_time += t_rev
-
-        print(f"\n >>> Modelo Revenue Max. Obj: {m_rev.objVal:.2f} <<<\n")
+        
+        print(f"\n >>> Modelo Revenue Max. Obj: {m_rev:.2f} <<<\n")
 
         m_inv, _, lambda_w, y_lin, I_lin, _, _, _, _ = MS_linear_affine(
             seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
             branching_structure, I0, phi_init=extended_phi, K_feat=K_features)
 
-        for j, t, p, q in product(range(prod), range(stages), range(pr), range(K_features)):
-            lam_w_new[j, t, p, q].LB = lambda_w[j, t, p, q]
-            lam_w_new[j, t, p, q].UB = lambda_w[j, t, p, q]
+        for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
+            lambda_w[j, t, p, s].LB = lam_w_new[j, t, p, s]
+            lambda_w[j, t, p, s].UB = lam_w_new[j, t, p, s]
 
-        m_lin.setParam('OutputFlag', 1)
+        m_inv.setParam('BarHomogeneous', 1)
+        m_inv.setParam('OutputFlag', 1)
 
         t0 = time.time()
-        m_lin.optimize()
+        m_inv.optimize()
         solve_time += time.time() - t0
 
-        if m_lin.status != GRB.OPTIMAL:
+        if m_inv.status != GRB.OPTIMAL:
             print("\nMS_linear infactible/no óptimo.\n")
             break
 
-        obj_lin = m_lin.objVal
+        obj_lin = m_inv.objVal
         print(f"\n[*] MS_linear (operación): {obj_lin:.2f}\n")
 
         if (obj_lin - best_obj) <= tol:
             print(f"\n>>> Convergencia en iteración {iteration}. <<<\n")
+            best_obj = obj_lin
             break
-        best_obj = obj_lin
+        
 
         # Paso D: actualizar I e y para la siguiente iteración
         I_fixed = {(i, t, s): I_lin[i, t, s].X 
@@ -157,6 +205,38 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         
         print(f"\nEffective Solve Time after iteration {iteration}: {solve_time:.2f} seconds\n")
 
-    return m_lin, best_obj, solve_time
+    # --- Evaluación final en MS_linear con política binarizada ---
+    print("\n--- EVALUACIÓN FINAL: Lambda → MS_linear ---\n")
+
+    w_bin = np.zeros((prod, stages, pr, scenarios), dtype=float)
+
+    for j, t, s in product(range(prod), range(stages), range(scenarios)):
+        best_p = max(range(pr), key=lambda p: lambda_w[j, t, p, s].X)
+        w_bin[j, t, best_p, s] = 1.0
+
+    m_final, x_final, w_final, y_final, I_final, _, _ = MS_linear(
+        seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
+        branching_structure, I0)
+
+    for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
+        w_final[j, t, p, s].LB = w_bin[j, t, p, s]
+        w_final[j, t, p, s].UB = w_bin[j, t, p, s]
+    
+    m_final.setParam('BarHomogeneous', 1)
+    m_final.setParam('OutputFlag', 1)
+
+    t0 = time.time()
+    m_final.optimize()
+    solve_time += time.time() - t0
+
+    if m_final.status != GRB.OPTIMAL:
+        print("MS_linear con política final no óptimo, retornando mejor objetivo afín.")
+        return m_inv, best_obj, solve_time
+
+    obj_final = m_final.ObjVal
+    print(f"\n>>> Objetivo MS_linear (evaluación final): {obj_final:.2f} <<<\n")
+    print(f">>> Diferencia vs mejor afín: {obj_final - best_obj:.2f} <<<\n")
+
+    return m_final, obj_final, solve_time
 
 

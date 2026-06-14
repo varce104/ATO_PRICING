@@ -109,8 +109,8 @@ show_boxplot = False   # Save boxplot to figures for every decision variable
 show_candlestick = False   # Save candlestick to figures for every decision variable
 #=============================================
 time_limit = 900
-seed = 5
-iter = 11 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+seed = 6
+iter = 1 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
@@ -141,7 +141,7 @@ inst = "Oh_et_al_1"
 # depending on their nature, thwy will be in either the models or the sol_approach folders.
 #=============================================
 
-Model = "MS_linear_affine"
+Model = "Iterative_heuristic"
 
 #============================================
 #   "MS" -> Standard multistage model (non-linear).
