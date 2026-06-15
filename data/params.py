@@ -21,7 +21,7 @@ import random
 
 # Oh_et_al_3
 # 11x11
-# BoM: Every product uses random components between 3 and 5
+# BoM: Every product uses random 5 components from the 11 total
 # Price set: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
 # Price function: D(p) = 50 - 0.8*p
 # Costs: C = 
@@ -92,7 +92,7 @@ def price_set(inst, a, b, inf, sup, step):
     return list(range(inf, sup + 1, step)), a, b, I0
 
 
-def parametros(inst, comp, min_cost, max_cost, inv_factor, scenarios, seed, prob=True):
+def parametros(inst, comp, A, min_cost, max_cost, inv_factor, scenarios, seed, prob=True):
     random.seed(seed)
     np.random.seed(seed)
     
@@ -104,10 +104,10 @@ def parametros(inst, comp, min_cost, max_cost, inv_factor, scenarios, seed, prob
         I = [x * 0.15 for x in C]
 
     elif inst == "Oh_et_al_3":
-        comp = 11; min_cost = 5; max_cost = 25; inv_factor = 0.15
-        C_raw = [random.randrange(min_cost, max_cost+1, 5) for i in range(comp)]
-        total_cost = sum(C_raw)
-        C = [int(round(x * 55 / total_cost)) for x in C_raw]
+        total_cost = 55; inv_factor = 0.15
+        k = int(np.sum(np.array(A)[:, 0]))  # k es igual para todas las columnas
+        c = round(total_cost / k)
+        C = [c] * comp
         I = [x * inv_factor for x in C]
 
     else:

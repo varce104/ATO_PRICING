@@ -141,7 +141,7 @@ inst = "Oh_et_al_2"
 # depending on their nature, thwy will be in either the models or the sol_approach folders.
 #=============================================
 
-Model = "MS_linear"
+Model = "Iterative_heuristic"
 
 #============================================
 #   "MS" -> Standard multistage model (non-linear).

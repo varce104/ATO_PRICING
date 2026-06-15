@@ -78,6 +78,7 @@ def revenue_max_v0(prod, stages, scenarios, pr, price, D_term, pi, extended_phi,
     
     return m_rev.ObjVal, lambda_val, t1 - t0
 
+
 def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed):
     import time
     m_rev = gp.Model("Revenue_Max")
@@ -88,7 +89,7 @@ def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_
     Gamma   = m_rev.addVars(prod, stages, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY)
     lambda_w = m_rev.addVars(prod, stages, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0)
 
-    # y_fixed[j][t][s]
+    # y_fixed[j, t, s]
     m_rev.setObjective(gp.quicksum(pi[s] * price[p] * lambda_w[j, t, p, s] * y_fixed[j, t, s]
                     for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios))),GRB.MAXIMIZE)
 
@@ -150,7 +151,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
                for j, t, s in product(range(prod), range(stages), range(scenarios))}
 
     # Check y possible faults
-    df = pd.DataFrame([(j, t, s, val)for (j, t, s), val in y_fixed.items()], columns=["j", "t", "s", "valor"])
+    # df = pd.DataFrame([(j, t, s, val)for (j, t, s), val in y_fixed.items()], columns=["j", "t", "s", "valor"])
     # df_pivot = df.pivot_table(index=["j", "s"], columns="t", values="valor")
     # print(df_pivot)
     #
@@ -193,7 +194,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
             break
 
         obj_lin = m_inv.objVal
-        print(f"\n MS_linear_affine (ATO problem): {obj_lin:.2f}\n")
+        print(f"\n >>> MS_linear_affine (ATO problem): {obj_lin:.2f} <<< \n")
 
         Evol.append({"iteration": iteration, "obj_pricing": m_rev, "obj_ato": obj_lin})
 
@@ -241,7 +242,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
 
     if m_final.status != GRB.OPTIMAL:
         print("MS_linear unfeasible, return best affine approx. obj.")
-        return m_inv, best_obj, solve_time
+        return m_inv, best_obj, solve_time, iteration
 
     obj_final = m_final.ObjVal
     print(f"\n>>> Obj. MS_linear: {obj_final:.2f} <<<\n")

@@ -42,7 +42,7 @@ def extract_params(size, bom, costs, price_param, demand, lead_times):
     else:
         pass
 
-    C, H, pi = parametros(inst, comp, min_cost, max_cost, inv_factor, scenarios, seed)
+    C, H, pi = parametros(inst, comp, A, min_cost, max_cost, inv_factor, scenarios, seed)
     price, a, b, I0 = price_set(inst, a, b, lb_price, ub_price, step_price)
     mult = epsilon_ms(inst, stages, scenarios, branching, seed, lb_epsilon, ub_epsilon)
     add = delta_ms(inst, prod, stages, scenarios, branching, seed, mu_delta, std_delta)

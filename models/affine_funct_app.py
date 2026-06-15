@@ -121,8 +121,10 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
                 m.addConstr(y[j, t, s] == y[j, t, first], name=f"NAC_y_t{t}_g{g}")
         n_groups = n_groups * branch_factor 
 
-    if lambda_fix == False: # Cuando se fija lambda, se trabaja como parámetro -> rho y Gamma no son necesarios (incluyendo restricciones asociadas)
 
+
+    if lambda_fix == False: # Cuando se fija lambda, se trabaja como parámetro -> rho y Gamma no son necesarios (incluyendo restricciones asociadas)
+        
         rho = m.addVars(prod, time, pr, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="rho")
         Gamma = m.addVars(prod, time, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="Gamma")
 
