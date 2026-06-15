@@ -113,8 +113,8 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
         
 
     elif Model == "Iterative_heuristic":
-        m, obj, ex_time = Iter_policy(seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-        return {"incumbent": obj, "bestbd": None, "gap": None, "time": ex_time, "vss": -1, "evpi": -1, "vss_ts": -1}
+        m, obj, ex_time, iteration = Iter_policy(seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
+        return {"incumbent": obj, "bestbd": None, "gap": None, "time": ex_time, "iteration": iteration}
         
 
     elif Model == "Benders":
@@ -133,10 +133,12 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
     m.setParam('OutputFlag', 1)
     # m.setParam('Method', 1)
     m.setParam('BarHomogeneous', 1)
+    # m.setParam("MIPGap", 5e-4) # Gap tol: 0.05% // Gurobi base tol: 0.01%/1e-4
 
     # m.Params.NonConvex = 2
 
     m.optimize()
+
     if m.status == GRB.OPTIMAL:
         incumbent = m.objVal
         bestbd = m.objBound

@@ -88,8 +88,8 @@ def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_
     Gamma   = m_rev.addVars(prod, stages, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY)
     lambda_w = m_rev.addVars(prod, stages, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0)
 
-
-    m_rev.setObjective(gp.quicksum(pi[s] * price[p] * lambda_w[j, t, p, s] * y_fixed[j][t][s]
+    # y_fixed[j][t][s]
+    m_rev.setObjective(gp.quicksum(pi[s] * price[p] * lambda_w[j, t, p, s] * y_fixed[j, t, s]
                     for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios))),GRB.MAXIMIZE)
 
     for j, t in product(range(prod), range(stages)):
@@ -116,7 +116,8 @@ def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_
 
 
 
-def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, max_iter=15, tol=1e-3):
+
+def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, max_iter=25, tol=1e-3):
     comp, prod, pr = len(A), len(A[0]), len(price)
     import time
 
@@ -126,7 +127,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
         D_term[j, t, p, s] = ypsilon[s][t] * (a - b * price[p]) + delta[s][j][t]
 
-    print("\n--- PASO 1: MS_linear_affine inicial (I = 0 en phi) ---\n")
+    print("\n--------- Step 0: Solve MS_affine_approxiamtion (I=0 for features vector) ---------\n")
     phi_init = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed=None)
 
     m_af, _, _, y_af, I_af, _, _, _, _ = MS_linear_affine(
@@ -140,7 +141,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     solve_time = time.time() - t0
 
     if m_af.status != GRB.OPTIMAL:
-        raise ValueError("\nMS_linear_affine inicial no es optimo.\n")
+        raise ValueError("\nMS_affine_approxiamtion unfeasible.\n")
 
     # Extraer I e y de MS_linear_affine
     I_fixed = {(i, t, s): I_af[i, t, s].X 
@@ -150,28 +151,31 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
 
     # Check y possible faults
     df = pd.DataFrame([(j, t, s, val)for (j, t, s), val in y_fixed.items()], columns=["j", "t", "s", "valor"])
-    df_pivot = df.pivot_table(index=["j", "s"], columns="t", values="valor")
-    print(df_pivot)
+    # df_pivot = df.pivot_table(index=["j", "s"], columns="t", values="valor")
+    # print(df_pivot)
     #
 
     best_obj = -np.inf
 
+    Evol = []
+    Evol.append({"iteration": 0, "obj": m_af.objVal, "solve_time": solve_time})
+
+
 
     for iteration in range(1, max_iter + 1):
-        print(f"\n--- ITERACION {iteration} ---\n")
+        print(f"\n--- ITERATION {iteration} ---\n")
 
         # Paso A: construir phi con inventario actual y resolver revenue_max
         extended_phi = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed)
-
         m_rev, lam_w_new, t_rev = revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed)
         
         solve_time += t_rev
         
-        print(f"\n >>> Modelo Revenue Max. Obj: {m_rev:.2f} <<<\n")
+        print(f"\n >>> Max Revenue Model. Obj: {m_rev:.2f} <<<\n")
 
         m_inv, _, lambda_w, y_lin, I_lin, _, _, _, _ = MS_linear_affine(
-            seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
-            branching_structure, I0, phi_init=extended_phi, K_feat=K_features)
+            seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, 
+                            extended_phi, K_features, lambda_fix=True)
 
         for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
             lambda_w[j, t, p, s].LB = lam_w_new[j, t, p, s]
@@ -185,17 +189,20 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         solve_time += time.time() - t0
 
         if m_inv.status != GRB.OPTIMAL:
-            print("\nMS_linear infactible/no óptimo.\n")
+            print("\nMS_linear_affine unfeasible.\n")
             break
 
         obj_lin = m_inv.objVal
-        print(f"\n[*] MS_linear (operación): {obj_lin:.2f}\n")
+        print(f"\n MS_linear_affine (ATO problem): {obj_lin:.2f}\n")
+
+        Evol.append({"iteration": iteration, "obj_pricing": m_rev, "obj_ato": obj_lin})
+
 
         if (obj_lin - best_obj) <= tol:
-            print(f"\n>>> Convergencia en iteración {iteration}. <<<\n")
-            best_obj = obj_lin
+            print(f"\nConvergence achieved. iteration: {iteration}")
             break
-        
+            
+        best_obj = obj_lin
 
         # Paso D: actualizar I e y para la siguiente iteración
         I_fixed = {(i, t, s): I_lin[i, t, s].X 
@@ -205,8 +212,11 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         
         print(f"\nEffective Solve Time after iteration {iteration}: {solve_time:.2f} seconds\n")
 
+
+
+
     # --- Evaluación final en MS_linear con política binarizada ---
-    print("\n--- EVALUACIÓN FINAL: Lambda → MS_linear ---\n")
+    print("\n------ Final Eval: Lambda -> MS_linear ------\n")
 
     w_bin = np.zeros((prod, stages, pr, scenarios), dtype=float)
 
@@ -230,13 +240,15 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     solve_time += time.time() - t0
 
     if m_final.status != GRB.OPTIMAL:
-        print("MS_linear con política final no óptimo, retornando mejor objetivo afín.")
+        print("MS_linear unfeasible, return best affine approx. obj.")
         return m_inv, best_obj, solve_time
 
     obj_final = m_final.ObjVal
-    print(f"\n>>> Objetivo MS_linear (evaluación final): {obj_final:.2f} <<<\n")
-    print(f">>> Diferencia vs mejor afín: {obj_final - best_obj:.2f} <<<\n")
+    print(f"\n>>> Obj. MS_linear: {obj_final:.2f} <<<\n")
+    print(f">>> Gap to affine approx. obj (for reference only): {obj_final - best_obj:.2f} <<<\n")
 
-    return m_final, obj_final, solve_time
+    print(Evol)
+
+    return m_final, obj_final, solve_time, iteration
 
 

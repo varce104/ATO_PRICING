@@ -2,6 +2,31 @@ import numpy as np
 import random
 
 
+
+# Oh_et_al_1
+# 3x2
+# BoM = [[1,0], [1,1], [0,1]]
+# Price set: [15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
+# Price function: D(p) = 100 - 1.6*p
+# Costs: C = [5, 5, 45]
+# Inventory Costs: I = [4, 4, 36]
+
+# Oh_et_al_2
+# 5x4
+# BoM: [[1,1,0,0], [2,1,1,0], [1,1,1,0], [0,0,1,0], [0,0,0,1]]
+# Price set: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+# Price function: D(p) = 50 - 0.8*p
+# Costs: C = [15,15,10,20,15]
+# Inventory Costs: I = C * 0.15
+
+# Oh_et_al_3
+# 11x11
+# BoM: Every product uses random components between 3 and 5
+# Price set: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+# Price function: D(p) = 50 - 0.8*p
+# Costs: C = 
+# Inventory Costs: I = C * 0.15
+
 def bill_of_materials(inst, comp, prod, min_use, max_use, seed, other):
     random.seed(seed)
     np.random.seed(seed)

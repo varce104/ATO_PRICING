@@ -14,21 +14,21 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
                 ypsilon, delta, a, b, C, H, pi, branching, I0):
     """
     Resuelve MS_linear_affine, extrae política binaria por argmax(lambda),
-    evalúa en MS_linear con w fijo. Evita exportar a Excel.
+    evalúa en MS_linear con w fijo.
     Retorna el modelo MS_linear resuelto con la misma interfaz que solver.py espera.
     """
     import time
     prod, pr = len(A[0]), len(price)
 
     m_af, _, lam_w, _, _, _, _, _, _ = MS_linear_affine(
-        seed, stages, scenarios, A, price, L, L_det,
-        ypsilon, delta, a, b, C, H, pi, branching, I0)
-    m_af.setParam('OutputFlag', 0)
+                    seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0)
+    
 
+    m_af.setParam('OutputFlag', 1)
+    m_af.setParam('BarHomogeneous', 1)
 
-    t0 = time.time()
     m_af.optimize()
-    solve_time = time.time() - t0
+    solve_time = m_af.Runtime
 
 
     if m_af.status != GRB.OPTIMAL:
@@ -68,9 +68,8 @@ def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
     m_cts.setParam('OutputFlag', 0)
     m_cts.Params.NonConvex = 2
 
-    t0 = time.time()
     m_cts.optimize()
-    solve_time = time.time() - t0
+    solve_time = m_cts.Runtime
 
 
     if m_cts.status != GRB.OPTIMAL:
