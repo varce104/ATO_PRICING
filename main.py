@@ -102,7 +102,7 @@ vss_ts_calc = False
 show_var = False   # export solution in an excel file. Can be used for fine analisys of decision behavior.
 #=============================================
 lambda_app = False   # Save lambda for affine function approximation. 
-lambda_benders = False   # lala
+lambda_benders = False   # Not Working
 #=============================================
 show_heatmap = False   # Save heatmaps to figures for every decision variable
 show_boxplot = False   # Save boxplot to figures for every decision variable
@@ -110,7 +110,7 @@ show_candlestick = False   # Save candlestick to figures for every decision vari
 #=============================================
 time_limit = 1200 # limit for each iteration
 seed = 5
-iter = 11 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+iter = 1 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
@@ -124,7 +124,7 @@ iter = 11 # 1 for a single instance. >2 for several (mean results, odd number re
 # These instances include all but stages, scenario tree and lead time distribution.
 #=============================================
 
-inst = "Oh_et_al_2"
+inst = "Oh_et_al_1"
 
 #=============================================
 # "Oh_et_al_1" -> Simple W model (3x2) based on Oh et al. (2014)
@@ -141,13 +141,14 @@ inst = "Oh_et_al_2"
 # depending on their nature, thwy will be in either the models or the sol_approach folders.
 #=============================================
 
-Model = "Iterative_heuristic"
+Model = "TS_linear"
 
 #============================================
 #   "MS" -> Standard multistage model (non-linear).
 #   "MS_FP" -> multistage with pricing as first stage decision.
 #============================================
 #   "MS_linear" -> multistage with linealized revenue (MILP). 
+#   "TS_linear" -> Two stage version of previous model.
 W_cts = False # True if w relaxed
 #============================================
 #   "MS_linear_affine" -> multistage with linealized revenue AND affine pricing policy.

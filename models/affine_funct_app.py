@@ -124,7 +124,7 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
 
 
     if lambda_fix == False: # Cuando se fija lambda, se trabaja como parámetro -> rho y Gamma no son necesarios (incluyendo restricciones asociadas)
-        
+
         rho = m.addVars(prod, time, pr, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="rho")
         Gamma = m.addVars(prod, time, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="Gamma")
 
@@ -137,7 +137,7 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
             prod_gamma_phi = gp.quicksum(Gamma[j, t, p, q] * phi[s][t][q] for q in range(K_features))
             m.addConstr(lambda_w[j, t, p, s] == rho[j, t, p] + prod_gamma_phi, name=f"def_lambda_{j}_{t}_{p}_{s}")
 
-        return m, x, lambda_w, y, I, A, D_term, rho, Gamma
+        return m, x, lambda_w, y, I, A, D_term, rho, Gamma, K_features
     
     else:       
-        return m, x, lambda_w, y, I, A, D_term, None, None
+        return m, x, lambda_w, y, I, A, D_term, None, None, K_features

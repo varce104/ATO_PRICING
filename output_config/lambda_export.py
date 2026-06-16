@@ -78,30 +78,41 @@ def fix_w_from_lambda(m, w_vars, w_rec, prod, time, pr, scenarios, epsilon=0.05)
     return w_rec
 
 
-def fix_w_from_lambda_partial(m, w_vars, w_sim, prod, time, pr, scenarios, epsilon=0.05):
-    """
-    Fija las variables w solo si el valor de lambda_w es claramente 0 o 1.
-    Deja libres (como binarias) aquellas que cayeron en valores fraccionarios.
-    """
+def export_affine_params_to_excel(filename, rho_vars, Gamma_vars, prod, time, pr, K_features):
+
+    # Rho
+    data_rho, idx_rho = [], []
     for j in range(prod):
-        for t in range(time):
-            for p in range(pr):
-                for s in range(scenarios):
-                
-                    lambda_val = w_sim.loc[(j, t, p), f"Scen_{s}"] 
-                    
-                    if lambda_val >= 1 - epsilon:
-                        w_vars[j, t, p, s].LB = 1.0
-                        w_vars[j, t, p, s].UB = 1.0
-                        
-                    elif lambda_val <= epsilon:
-                        w_vars[j, t, p, s].LB = 0.0
-                        w_vars[j, t, p, s].UB = 0.0
-                        
-                    else:
-                        # Valor fraccionario (ej: 0.4 y 0.6 para dos precios distintos)
-                        # No modificamos LB ni UB. Gurobi la mantendrá como GRB.BINARY
-                        # y decidirá el valor óptimo durante el Branch & Bound.
-                        pass 
-                        
-    m.update()
+        for p in range(pr):
+            data_rho.append([rho_vars[j, t, p].X for t in range(time)])
+            idx_rho.append((f"Prod_{j}", f"Price_{p}"))
+
+    df_rho = pd.DataFrame(
+        data_rho,
+        index=pd.MultiIndex.from_tuples(idx_rho, names=["Product", "Price"]),
+        columns=[f"T{t}" for t in range(time)]
+    )
+
+    # Gamma
+    data_gamma, idx_gamma = [], []
+    for j in range(prod):
+        for p in range(pr):
+            for q in range(K_features):
+                data_gamma.append([Gamma_vars[j, t, p, q].X for t in range(time)])
+                idx_gamma.append((f"Prod_{j}", f"Price_{p}", f"Feat_{q}"))
+
+    df_gamma = pd.DataFrame(
+        data_gamma,
+        index=pd.MultiIndex.from_tuples(idx_gamma, names=["Product", "Price", "Feature"]),
+        columns=[f"T{t}" for t in range(time)]
+    )
+
+    try:
+        with pd.ExcelWriter(filename, engine="openpyxl") as writer:
+            df_rho.to_excel(writer, sheet_name="Rho")
+            df_gamma.to_excel(writer, sheet_name="Gamma")
+        print(f"\n>> Parámetros afines exportados a: {filename}")
+    except Exception as e:
+        print(f"Error al exportar parámetros afines: {e}")
+
+    

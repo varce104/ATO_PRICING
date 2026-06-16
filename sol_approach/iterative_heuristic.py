@@ -131,7 +131,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     print("\n--------- Step 0: Solve MS_affine_approxiamtion (I=0 for features vector) ---------\n")
     phi_init = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed=None)
 
-    m_af, _, _, y_af, I_af, _, _, _, _ = MS_linear_affine(
+    m_af, _, _, y_af, I_af, _, _, _, _, _ = MS_linear_affine(
         seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, phi_init, K_features)
     
     m_af.setParam('BarHomogeneous', 1)
@@ -174,7 +174,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         
         print(f"\n >>> Max Revenue Model. Obj: {m_rev:.2f} <<<\n")
 
-        m_inv, _, lambda_w, y_lin, I_lin, _, _, _, _ = MS_linear_affine(
+        m_inv, _, lambda_w, y_lin, I_lin, _, _, _, _, _ = MS_linear_affine(
             seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, 
                             extended_phi, K_features, lambda_fix=True)
 

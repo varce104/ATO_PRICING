@@ -23,7 +23,6 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
     m_af, _, lam_w, _, _, _, _, _, _ = MS_linear_affine(
                     seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0)
     
-
     m_af.setParam('OutputFlag', 1)
     m_af.setParam('BarHomogeneous', 1)
 
