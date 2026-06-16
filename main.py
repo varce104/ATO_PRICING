@@ -102,16 +102,15 @@ vss_ts_calc = False
 show_var = False   # export solution in an excel file. Can be used for fine analisys of decision behavior.
 #=============================================
 lambda_app = False   # Save lambda for affine function approximation. 
-                     # if solving standard multistage, it will fix a pricing policy (requires execute approximation first with lambda_app = True).
-lambda_benders = False   # lala
+lambda_benders = False   # Not Working
 #=============================================
 show_heatmap = False   # Save heatmaps to figures for every decision variable
 show_boxplot = False   # Save boxplot to figures for every decision variable
 show_candlestick = False   # Save candlestick to figures for every decision variable
 #=============================================
-time_limit = 900
-seed = 6
-iter = 10 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+time_limit = 1200 # limit for each iteration
+seed = 5
+iter = 1 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
@@ -142,23 +141,26 @@ inst = "Oh_et_al_1"
 # depending on their nature, thwy will be in either the models or the sol_approach folders.
 #=============================================
 
-Model = "Iterative_heuristic"
+Model = "TS_linear"
 
-#=============================================
+#============================================
 #   "MS" -> Standard multistage model (non-linear).
 #   "MS_FP" -> multistage with pricing as first stage decision.
-#=============================================
+#============================================
 #   "MS_linear" -> multistage with linealized revenue (MILP). 
-W_cts = False
-# true if w relaxed (probably non-convex but ok!)
-#=============================================
+#   "TS_linear" -> Two stage version of previous model.
+W_cts = False # True if w relaxed
+#============================================
 #   "MS_linear_affine" -> multistage with linealized revenue AND affine pricing policy.
 #   "TS_linear_affine" -> two-stage with linearized revenue AND affine pricing policy (x here-and-now).
-#=============================================
+#============================================
+#   "Affine_eval" -> Solves MS_linear_affine, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
+#   "Relaxed_eval" ->  Relax MS_linear , extract and approximate cts policy to binary, evaluate in MS_linear with w fixed.
+#============================================
 #   "Iterative_heuristic" -> iterative heuristic: iterates between solving pricing problem and inventory problem (features vector contains inventory levels from inventory problem)
-#=============================================
-#   "Benders" -> Benders with affine function approximation.
-#=============================================
+#============================================
+#   "Benders" -> Benders with affine function approximation. (Not working)
+#============================================
 
 
 size = inst, comp, prod, stages, scenarios, branching, seed, time_limit

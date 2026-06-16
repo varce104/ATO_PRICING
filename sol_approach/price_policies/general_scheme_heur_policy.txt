@@ -1,0 +1,341 @@
+Tu estructura actual ya está MUY cerca de poder implementar una heurística tipo Oh et al.
+Lo importante es que no pienses en “reemplazar” tu modelo, sino en agregarle una capa jerárquica.
+
+La idea sería algo así:
+
+---
+
+# ESQUEMA GENERAL
+
+```txt
+MODELO ORIGINAL (TS)
+│
+├── Resolver TS proxy / reducido
+│   │
+│   ├── decisiones:
+│   │      x[i,t]
+│   │      w[j,t,p]
+│   │
+│   ├── recourse:
+│   │      y[j,t,s]
+│   │      I[i,t,s]
+│   │
+│   └── obtener:
+│          x*
+│          w*
+│          y*
+│          I*
+│
+├── Calcular safety stocks
+│   │
+│   ├── para cada componente i
+│   ├── para cada período t
+│   │
+│   └── usar:
+│
+│       SS[i,t] =
+│           arribos esperados
+│           -
+│           consumo esperado
+│
+│       o alternativamente:
+│
+│       SS[i,t] = E[I[i,t,s]]
+│
+└── Resolver subproblemas operacionales
+    │
+    ├── rolling horizon
+    ├── determinísticos o semi-estocásticos
+    │
+    ├── usando:
+    │      inventario disponible
+    │      -
+    │      safety stock reservado
+    │
+    └── implementar:
+           pricing
+           procurement
+           producción
+```
+
+---
+
+# ETAPA 1 — TS PROXY
+
+Aquí NO buscas operar el sistema final.
+
+Sólo quieres extraer:
+
+```txt
+- patrón de abastecimiento
+- patrón de pricing
+- inventarios de protección
+```
+
+Tu modelo `TS_linear` ya sirve casi directamente.
+
+---
+
+# Qué probablemente cambiaría
+
+## Mantener
+
+```txt
+x[i,t]
+w[j,t,p]
+y[j,t,s]
+I[i,t,s]
+```
+
+---
+
+## Quizás simplificar
+
+```txt
+- horizonte menor
+- menos escenarios
+- rolling horizon corto
+```
+
+porque el objetivo es sólo calcular buffers.
+
+---
+
+# ETAPA 2 — EXTRAER SAFETY STOCKS
+
+Aquí viene la reinterpretación de Oh et al.
+
+---
+
+## OPCIÓN A (más limpia para tu modelo)
+
+Usar inventario esperado residual:
+
+[
+SS_{i,t} = \mathbb E[I_{i,t,s}]
+]
+
+Es decir:
+
+```txt
+SS[i,t] =
+    sum_s pi[s] * I*[i,t,s]
+```
+
+Esto encaja PERFECTO con tu formulación.
+
+---
+
+## OPCIÓN B (más parecida a Oh et al.)
+
+Usar:
+
+[
+SS_{i,t}
+========
+
+## \sum_{\tau\in A_{i,t}}x^*_{i,\tau}
+
+\sum_j B_{i,j}\mathbb E[y^*_{j,t,s}]
+]
+
+---
+
+# ETAPA 3 — SUBPROBLEMA OPERACIONAL
+
+Aquí está el verdadero “desacople”.
+
+---
+
+# IDEA CENTRAL
+
+El inventario ya NO es completamente usable.
+
+Ahora:
+
+```txt
+inventario utilizable =
+inventario disponible
+-
+safety stock
+```
+
+---
+
+# En tu restricción de balance
+
+Actualmente tienes algo tipo:
+
+```txt
+consumo acumulado + inventario
+=
+arribos acumulados
+```
+
+---
+
+# La heurística agregaría
+
+algo conceptualmente así:
+
+```txt
+consumo permitido
+<=
+arribos
+-
+SS
+```
+
+---
+
+# En tu caso con lead times generales
+
+El inventario disponible debería calcularse usando:
+
+```txt
+A[i,t]
+```
+
+o
+
+```txt
+alpha[i,tau,t,s]
+```
+
+que ya construyes.
+
+Eso es MUY bueno porque ya tienes la estructura correcta.
+
+---
+
+# ESTRUCTURA COMPLETA DE IMPLEMENTACIÓN
+
+```txt
+main.py
+│
+├── generar escenarios
+│
+├── resolver TS_proxy()
+│   │
+│   └── retornar:
+│       x*
+│       w*
+│       y*
+│       I*
+│
+├── compute_safety_stock()
+│   │
+│   ├── input:
+│   │      x*
+│   │      y*
+│   │      I*
+│   │
+│   └── output:
+│          SS[i,t]
+│
+├── rolling_horizon_policy()
+│   │
+│   ├── observar estado actual
+│   │
+│   ├── calcular inventario disponible
+│   │
+│   ├── reservar:
+│   │      SS[i,t]
+│   │
+│   ├── resolver subproblema operacional
+│   │
+│   └── implementar:
+│          x_t
+│          w_t
+│          y_t
+│
+└── simulación forward
+    │
+    ├── realizar demanda
+    ├── actualizar inventarios
+    ├── actualizar pipeline
+    └── avanzar período
+```
+
+---
+
+# EL DETALLE MÁS IMPORTANTE
+
+No reemplaces tu variable de pricing.
+
+NO hagas esto:
+
+```txt
+introducir q_t artificialmente
+```
+
+Eso te rompería toda la estructura discreta actual.
+
+---
+
+# En cambio
+
+Mantén:
+
+```txt
+w[j,t,p]
+```
+
+y deja que:
+
+```txt
+demanda esperada
+```
+
+emerja desde:
+
+```txt
+E[D(w)]
+```
+
+o desde:
+
+```txt
+E[y]
+```
+
+---
+
+# Qué subproblema operacional usar
+
+Aquí tienes varias posibilidades:
+
+```txt
+1. determinístico puro
+2. expected value
+3. pequeño multistage RH
+4. política miope
+5. MPC / rolling horizon
+```
+
+---
+
+# La adaptación MÁS natural a tu código actual
+
+Honestamente sería:
+
+```txt
+TS_linear()
+    ↓
+extraer SS
+    ↓
+resolver versión determinística/MS
+con restricciones de protección
+```
+
+porque ya tienes:
+
+```txt
+- alpha
+- lead times generales
+- pricing discreto
+- escenarios
+- NACs
+```
+
+La parte difícil realmente ya la resolviste.

@@ -4,11 +4,13 @@ from data.params import parametros, bill_of_materials, price_set
 from models.multistage import Multistage_problem
 from models.multistage_FP import Multistage_problem_Fix_price
 
-from sol_approach.linealization_prop import MS_linear
-from sol_approach.affine_funct_app import MS_linear_affine
+from models.linealization_prop import MS_linear, TS_linear
+from models.affine_funct_app import MS_linear_affine
+
+from sol_approach.policy_eval import Affine_eval, Relaxed_eval
 from sol_approach.twostage_affine import TS_linear_affine
 from sol_approach.Benders.benders import Benders_dec
-from sol_approach.iterative_heuristic import Iter_policy, iterative_pricing_inventory
+from sol_approach.iterative_heuristic import Iter_policy
 
 from sol_approach.price_policies.price_heuristic import price_heuristic, apply_price_heuristic_to_model
 from sol_approach.price_policies.price_heuristic import price_heuristic_oh, apply_oh_heuristic_to_model
@@ -16,9 +18,8 @@ from sol_approach.price_policies.price_heuristic import price_heuristic_oh, appl
 from uncertainty_analysis.sto_computation import uncertainty_analysis
 
 from output_config.results_output import export
-from output_config.lambda_export import fix_w_from_lambda, fix_w_from_lambda_partial
+from output_config.lambda_export import fix_w_from_lambda
 
-import numpy as np
 import pandas as pd
 from itertools import product
 import gurobipy as gp
@@ -41,7 +42,7 @@ def extract_params(size, bom, costs, price_param, demand, lead_times):
     else:
         pass
 
-    C, H, pi = parametros(inst, comp, min_cost, max_cost, inv_factor, scenarios, seed)
+    C, H, pi = parametros(inst, comp, A, min_cost, max_cost, inv_factor, scenarios, seed)
     price, a, b, I0 = price_set(inst, a, b, lb_price, ub_price, step_price)
     mult = epsilon_ms(inst, stages, scenarios, branching, seed, lb_epsilon, ub_epsilon)
     add = delta_ms(inst, prod, stages, scenarios, branching, seed, mu_delta, std_delta)
@@ -62,13 +63,16 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
     C, H, pi, A, price, mult, add, L, a, b, I0 = extract_params(size, bom, costs, price_param, demand, lead_times)
     _,_, det = lead_times
     show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts = show
-
+    
+    
     if inst is not None:
         comp = len(A); prod = len(A[0])
         print(f"\nInstance: {inst} | Components: {comp} | Products: {prod} | Stages: {stages} | Scenarios: {scenarios} | Iteration: {seed-4}")
 
-        
-    if Model == "MS":
+    solve_time = 0
+    rho=0; gamma=0; K_features=0
+
+    if Model == "MS": #Non-linear model
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = Multistage_problem(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         if lambda_app:
@@ -78,50 +82,81 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
             w_sim = pd.read_excel(f"var_results/MS_benders_inst{seed}.xlsx", sheet_name='W_sol', index_col=[0, 1, 2])
             fix_w_from_lambda(m, w_vars, w_sim, prod, stages, len(price), scenarios)
             
-
-    elif Model == "MS_FP":
+    elif Model == "MS_FP": #Non-linear model with non-anticipativity relaxed for pricing (1st stage decision)
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = Multistage_problem_Fix_price(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         
-    elif Model == "MS_linear":
-        print("\n--- Construyendo modelo linealizado ---", W_cts)
+
+
+    elif Model == "MS_linear": # Linear model (base model)
+        print(f"\n--- Construyendo modelo linealizado ---    w relajado: {W_cts}")
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = MS_linear(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, W_cts)
         if lambda_app:
             w_sim = pd.read_excel(f"var_results/MS_lambda_app_inst{seed}.xlsx", sheet_name='W_sol', index_col=[0, 1, 2])
             fix_w_from_lambda(m, w_vars, w_sim, prod, stages, len(price), scenarios)
 
-    elif Model == "MS_linear_affine":
-        m, x_vars, w_vars, y_vars, I_vars, A, D_term, _, _ = MS_linear_affine(
+    elif Model == "TS_linear": # Two stage version of MS_linear
+        print(f"\n--- Construyendo modelo linealizado ---    w relajado: {W_cts}")
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term = MS_linear(
+                                                            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, W_cts)
+        if lambda_app:
+            w_sim = pd.read_excel(f"var_results/MS_lambda_app_inst{seed}.xlsx", sheet_name='W_sol', index_col=[0, 1, 2])
+            fix_w_from_lambda(m, w_vars, w_sim, prod, stages, len(price), scenarios)
+
+
+
+    elif Model == "MS_linear_affine": # Pricing approximation via affine functions (LP model)
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, rho, gamma, K_features = MS_linear_affine(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-    
-    elif Model == "TS_linear_affine":
+        
+    elif Model == "TS_linear_affine": # Two stage version of MS_linear_affine
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, _, _ = TS_linear_affine(
-                                                            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, I0)
+                                                            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, I0)     
+
+
+
+    elif Model == "Affine_eval": # Approximation and evaluation of MS_linear_affine pricing policy into MS_linear (accounts for solving these two)
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Affine_eval(
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
+
+    elif Model == "Relaxed_eval": # Approximation and evaluation of relaxed MS_linear pricing policy into MS_linear (accounts for solving these two)
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Relaxed_eval(
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
+    
+
+        
+    elif Model == "Iterative_heuristic": # Iteration between Pricing only model and ATO model.
+        m, obj, ex_time, iteration = Iter_policy(seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
+        return {"incumbent": obj, "bestbd": None, "gap": None, "time": ex_time, "iteration": iteration}
         
 
-    elif Model == "Iterative_heuristic":
-        m, obj, ex_time = Iter_policy(seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-        return {"incumbent": obj, "bestbd": None, "gap": None, "time": ex_time, "vss": -1, "evpi": -1, "vss_ts": -1}
-        
 
-    elif Model == "Benders":
+    elif Model == "Benders": # Benders, didn't work idk why
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = Benders_dec(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, time_limit)
         return None
 
 #=====================================================================================================================================
-
     else:
         print("\nWrong input, try again...")
         return None
+#=====================================================================================================================================
+    
 
+#=====================================================================================================================================
+#   Gurobi Parameters:
     m.setParam('TimeLimit', time_limit)
     m.setParam('OutputFlag', 1)
-    m.Params.NonConvex = 2
-    # MS_linear with w continuous is non-convex. 0 to block non-convex models
+    # m.setParam('Method', 1)
+    m.setParam('BarHomogeneous', 1)
+    # m.setParam("MIPGap", 5e-4) # Gap tol: 0.05% // Gurobi base tol: 0.01%/1e-4
+    # m.Params.NonConvex = 2
+#=====================================================================================================================================
 
     m.optimize()
+
+
     if m.status == GRB.OPTIMAL:
         incumbent = m.objVal
         bestbd = m.objBound
@@ -143,9 +178,11 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
         bestbd = None
         gap = None
 
-    vss, evpi, vss_ts = uncertainty_analysis(vss_calc, evpi_calc, vss_ts_calc, size, bom, costs, price_param, demand, lead_times, incumbent)
+    opt_time = m.Runtime + solve_time
 
-    solutions = [seed, x_vars, w_vars, I_vars, y_vars, D_term, price, stages, scenarios, A, det, lambda_app, Model]
+    vss, evpi, vss_ts = uncertainty_analysis(vss_calc, evpi_calc, vss_ts_calc, size, bom, costs, price_param, demand, lead_times, incumbent)
+    solutions = [seed, x_vars, w_vars, I_vars, y_vars, D_term, price, stages, scenarios, A, det, lambda_app, Model, rho, gamma, K_features]
     export(show_var, show_heatmap, show_boxplot, show_candlestick, solutions)
 
-    return {"incumbent": incumbent, "bestbd": bestbd, "gap": gap, "time": m.Runtime, "vss": vss, "evpi": evpi, "vss_ts": vss_ts}
+
+    return {"incumbent": incumbent, "bestbd": bestbd, "gap": gap, "time": opt_time, "vss": vss, "evpi": evpi, "vss_ts": vss_ts}

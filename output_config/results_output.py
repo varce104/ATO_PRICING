@@ -2,15 +2,16 @@ from output_config.var_export import export_solution_to_excel, extract_solution_
 from output_config.graphs.heatmap import plot_instance_decisions
 from output_config.graphs.boxplot import plot_boxplot
 from output_config.graphs.candlestick import plot_candlestick
-from output_config.lambda_export import export_solution_to_excel_affine
+from output_config.lambda_export import export_solution_to_excel_affine, export_affine_params_to_excel
 import numpy as np
 
 
 def export(show_sol, show_heatmap, show_boxplot, show_candlestick, vals):
-    seed, x_vars, w_vars, I_vars, y_vars, D_term, price, time, scenarios, A, det, lambda_app, Model = vals
+    seed, x_vars, w_vars, I_vars, y_vars, D_term, price, time, scenarios, A, det, lambda_app, Model, rho, gamma, K_features = vals
 
     if lambda_app and Model in ("MS_linear_affine", "TS_linear_affine"):
         export_solution_to_excel_affine(f"var_results/MS_lambda_app_inst{seed}.xlsx", w_vars, time, scenarios, len(price), A, Model)
+        export_affine_params_to_excel(f"var_results/MS_affine_params_inst{seed}.xlsx",rho, gamma, len(A[0]), time, len(price), K_features)
         return None
     else:
         pass
