@@ -5,7 +5,7 @@ from models.multistage import Multistage_problem
 from models.multistage_FP import Multistage_problem_Fix_price
 
 from models.linealization_prop import MS_linear, TS_linear
-from models.affine_funct_app import MS_linear_affine
+from models.affine_funct_app import MS_linear_affine, MS_affine_cts
 
 from sol_approach.policy_eval import Affine_eval, Relaxed_eval
 from sol_approach.twostage_affine import TS_linear_affine
@@ -107,7 +107,11 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
 
 
     elif Model == "MS_linear_affine": # Pricing approximation via affine functions (LP model)
-        m, x_vars, w_vars, y_vars, I_vars, A, D_term, rho, gamma, K_features = MS_linear_affine(
+        if W_cts:
+            m, x_vars, w_vars, y_vars, I_vars, A, D_term, rho, gamma, K_features = MS_affine_cts(
+                                                            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
+        else:    
+            m, x_vars, w_vars, y_vars, I_vars, A, D_term, rho, gamma, K_features = MS_linear_affine(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         
     elif Model == "TS_linear_affine": # Two stage version of MS_linear_affine

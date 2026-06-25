@@ -20,7 +20,7 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
     import time
     prod, pr = len(A[0]), len(price)
 
-    m_af, _, lam_w, _, _, _, _, _, _ = MS_linear_affine(
+    m_af, _, lam_w, _, _, _, _, _, _, _ = MS_linear_affine(
                     seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0)
     
     m_af.setParam('OutputFlag', 1)
