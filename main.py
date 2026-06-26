@@ -1,4 +1,4 @@
-from models.solver import solve
+from solver import solve
 from instances import instances
 import numpy as np
 import math
@@ -140,23 +140,24 @@ inst = "Oh_et_al_1"
 # depending on their nature, they will be in either the models or the sol_approach folders.
 #=============================================
 
-Model = "MS_linear_affine"
+Model = "MS_linear"
 
 #============================================
 #   "MS" -> Standard multistage model (non-linear).
-#   "MS_FP" -> multistage with pricing as first stage decision.
 #============================================
 #   "MS_linear" -> multistage with linealized revenue (MILP). 
-#   "TS_linear" -> Two stage version of previous model.
 W_cts = True # True if w relaxed // for affine approximation True if lambda in [lb_p, ub_p]
 #============================================
 #   "MS_linear_affine" -> multistage with linealized revenue AND affine pricing policy.
-#   "TS_linear_affine" -> two-stage with linearized revenue AND affine pricing policy (x here-and-now).
 #============================================
 #   "Affine_eval" -> Solves MS_linear_affine, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
-#   "Relaxed_eval" ->  Relax MS_linear , extract and approximate cts policy to binary, evaluate in MS_linear with w fixed.
 #============================================
 #   "Iterative_heuristic" -> iterative heuristic: iterates between solving pricing problem and inventory problem (features vector contains inventory levels from inventory problem)
+#============================================
+# Others:
+#   "TS_linear" -> Two stage version of MS_linear model.
+#   "TS_linear_affine" -> two-stage with linearized revenue AND affine pricing policy (x here-and-now).
+#   "Relaxed_eval" ->  Relax MS_linear , extract and approximate cts policy to binary, evaluate in MS_linear with w fixed.
 #============================================
 
 

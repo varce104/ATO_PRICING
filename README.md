@@ -21,20 +21,13 @@ ATO_PRICING/
 │
 ├── models/
 │   ├── multistage.py              # Standard multistage stochastic model (nonlinear objective).
-│   ├── multistage_FP.py           # Multistage model with pricing as a here-and-now decision.
+│   ├── linealization_prop.py      # Linearized multistage model (MILP via auxiliary variable r).
 │   ├── twostage_dlt_slt.py        # Two-stage recourse model (deterministic/stochastic lead times).
 │   └── solver.py                  # Model dispatcher: builds, solves, and routes outputs.
 │
 ├── sol_approach/
-│   ├── linealization_prop.py      # Linearized multistage model (MILP via auxiliary variable r).
 │   ├── affine_funct_app.py        # Multistage affine function approximation (continuous relaxation of w).
-│   ├── twostage_affine.py         # Two-stage version of the affine approximation.
-│   ├── Benders/
-│   │   ├── benders.py             # Benders decomposition loop.
-│   │   ├── MP.py                  # Benders master problem.
-│   │   └── SP.py                  # Benders subproblem.
-│   └── price_policies/
-│       └── price_heuristic.py     # Pricing heuristics (from literature).
+│   └── twostage_affine.py         # Two-stage version of the affine approximation.
 │
 ├── uncertainty_analysis/
 │   ├── vss.py                     # Value of the Stochastic Solution (VSS).
