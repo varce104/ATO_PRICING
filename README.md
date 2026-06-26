@@ -13,7 +13,9 @@ The following library optimizes a multistage assemble-to-order model, where comp
 ```
 ATO_PRICING/
 ├── main.py                        # Entry point. All parameters are set here.
+│
 ├── instances.py                   # Runs single or multiple seeds; aggregates results.
+├── solver.py                      # Model dispatcher: builds, solves, and routes outputs.
 │
 ├── data/
 │   ├── generator.py               # Generates stochastic scenario tree (ε, δ, lead times).
@@ -23,10 +25,11 @@ ATO_PRICING/
 │   ├── multistage.py              # Standard multistage stochastic model (nonlinear objective).
 │   ├── linealization_prop.py      # Linearized multistage model (MILP via auxiliary variable r).
 │   ├── twostage_dlt_slt.py        # Two-stage recourse model (deterministic/stochastic lead times).
-│   └── solver.py                  # Model dispatcher: builds, solves, and routes outputs.
+│   └── affine_funct_app.py        # Multistage affine function approximation (continuous relaxation of w).
 │
 ├── sol_approach/
-│   ├── affine_funct_app.py        # Multistage affine function approximation (continuous relaxation of w).
+│   ├── iterative_heuristic.py     # Iterative approach that decouples pricing decision from inventory problem (or ATO problem)
+│   ├── price_app_eval.py          # Evaluation of pricing approximation obtained from other models.
 │   └── twostage_affine.py         # Two-stage version of the affine approximation.
 │
 ├── uncertainty_analysis/
@@ -46,8 +49,7 @@ ATO_PRICING/
 │       └── heatmap.py
 │
 ├── figures/                       # Output figures (generated at runtime).
-├── var_results/                   # Output Excel files (generated at runtime).
-└── data/                          # (Reserved for data files.)
+└── var_results/                   # Output Excel files (generated at runtime).
 ```
  
 ---
