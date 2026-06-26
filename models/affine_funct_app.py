@@ -124,12 +124,10 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
 
         rho = m.addVars(prod, time, pr, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="rho")
         Gamma = m.addVars(prod, time, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="Gamma")
-
         for j, t in product(range(prod), range(time)):
             m.addConstr(gp.quicksum(rho[j, t, p] for p in range(pr)) == 1, name=f"sum_rho_{j}_{t}")
             for q in range(K_features):
                 m.addConstr(gp.quicksum(Gamma[j, t, p, q] for p in range(pr)) == 0, name=f"sum_Gamma_{j}_{t}_{q}")
-
         for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
             prod_gamma_phi = gp.quicksum(Gamma[j, t, p, q] * phi[s][t][q] for q in range(K_features))
             m.addConstr(lambda_w[j, t, p, s] == rho[j, t, p] + prod_gamma_phi, name=f"def_lambda_{j}_{t}_{p}_{s}")
@@ -147,8 +145,8 @@ def MS_affine_cts(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     comp = len(A)
     prod = len(A[0])
     pr = len(price)
-    lb_p = max(price)
-    ub_p = min(price)
+    lb_p = min(price)
+    ub_p = max(price)
 
     m = gp.Model("Modelo ATO Afín/lambda cts")
 
@@ -181,7 +179,7 @@ def MS_affine_cts(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     y = m.addVars(prod, time, scenarios, vtype=GRB.CONTINUOUS, name="y", lb=0)
     # y_bar = m.addVars(prod, time, scenarios, vtype=GRB.CONTINUOUS, name="r", lb=0) # No need for this variable anymore
 
-    lambda_w = m.addVars(prod, time, scenarios, vtype=GRB.CONTINUOUS, name="lambda_w", lb=0) 
+    lambda_w = m.addVars(prod, time, scenarios, vtype=GRB.CONTINUOUS, name="lambda_w", lb=lb_p, ub=ub_p) 
 
     D_term = {}
     for j, t, s in product(range(prod), range(time), range(scenarios)):
