@@ -31,7 +31,8 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
 
 
     if m_af.status != GRB.OPTIMAL:
-        raise ValueError("MS_linear_affine no es óptimo.")
+        print("MS_linear_affine no es óptimo.")
+        return None, None, None, None, None, None, None, None
 
     obj_affine = m_af.objVal
     w_bin = extract_solution_arrays_affine_w(lam_w, prod, stages, scenarios, pr)

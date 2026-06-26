@@ -142,7 +142,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     solve_time = time.time() - t0
 
     if m_af.status != GRB.OPTIMAL:
-        raise ValueError("\nMS_affine_approxiamtion unfeasible.\n")
+        return None, None, None, None
 
     # Extraer I e y de MS_linear_affine
     I_fixed = {(i, t, s): I_af[i, t, s].X 
@@ -191,7 +191,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
 
         if m_inv.status != GRB.OPTIMAL:
             print("\nMS_linear_affine unfeasible.\n")
-            break
+            return None, None, None, None
 
         obj_lin = m_inv.objVal
         print(f"\n >>> MS_linear_affine (ATO problem): {obj_lin:.2f} <<< \n")
