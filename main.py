@@ -124,7 +124,7 @@ iter = 11 # 1 for a single instance. >2 for several (mean results, odd number re
 # These instances include all but stages, scenario tree and lead time distribution.
 #=============================================
 
-inst = "Oh_et_al_2"
+inst = "Oh_et_al_1"
 
 #=============================================
 # "Oh_et_al_1" -> Simple W model (3x2) based on Oh et al. (2014)
@@ -148,7 +148,7 @@ Model = "MS_linear_affine"
 #============================================
 #   "MS_linear" -> multistage with linealized revenue (MILP). 
 #   "TS_linear" -> Two stage version of previous model.
-W_cts = False # True if w relaxed // for affine approximation True if lambda in [lb_p, ub_p]
+W_cts = True # True if w relaxed // for affine approximation True if lambda in [lb_p, ub_p]
 #============================================
 #   "MS_linear_affine" -> multistage with linealized revenue AND affine pricing policy.
 #   "TS_linear_affine" -> two-stage with linearized revenue AND affine pricing policy (x here-and-now).
@@ -157,8 +157,6 @@ W_cts = False # True if w relaxed // for affine approximation True if lambda in 
 #   "Relaxed_eval" ->  Relax MS_linear , extract and approximate cts policy to binary, evaluate in MS_linear with w fixed.
 #============================================
 #   "Iterative_heuristic" -> iterative heuristic: iterates between solving pricing problem and inventory problem (features vector contains inventory levels from inventory problem)
-#============================================
-#   "Benders" -> Benders with affine function approximation. (Not working)
 #============================================
 
 

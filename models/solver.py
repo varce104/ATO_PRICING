@@ -9,11 +9,7 @@ from models.affine_funct_app import MS_linear_affine, MS_affine_cts, MS_affine_m
 
 from sol_approach.price_app_eval import Affine_eval, Relaxed_eval
 from sol_approach.twostage_affine import TS_linear_affine
-from sol_approach.Benders.benders import Benders_dec
 from sol_approach.iterative_heuristic import Iter_policy
-
-from sol_approach.price_policies.price_heuristic import price_heuristic, apply_price_heuristic_to_model
-from sol_approach.price_policies.price_heuristic import price_heuristic_oh, apply_oh_heuristic_to_model
 
 from uncertainty_analysis.sto_computation import uncertainty_analysis
 
@@ -43,7 +39,7 @@ def extract_params(size, bom, costs, price_param, demand, lead_times):
         pass
 
     C, H, pi = parametros(inst, comp, A, min_cost, max_cost, inv_factor, scenarios, seed)
-    price, a, b, _ = price_set(inst, a, b, lb_price, ub_price, step_price)
+    price, a, b, I0 = price_set(inst, a, b, lb_price, ub_price, step_price)
     mult = epsilon_ms(inst, stages, scenarios, branching, seed, lb_epsilon, ub_epsilon)
     add = delta_ms(inst, prod, stages, scenarios, branching, seed, mu_delta, std_delta)
     L = lead_times_ms(inst, comp, stages, scenarios, branching, seed, lb_L, ub_L, det)
@@ -144,13 +140,6 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
         else:
             return {"incumbent": obj, "bestbd": obj, "gap": ((obj-obj)/obj*100), "time": ex_time, "iteration": iteration}
         
-
-
-    elif Model == "Benders": # Benders, didn't work idk why
-        m, x_vars, w_vars, y_vars, I_vars, A, D_term = Benders_dec(
-                                                            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, time_limit)
-        return None
-
 #=====================================================================================================================================
     else:
         print("\nWrong input, try again...")

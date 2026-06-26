@@ -120,5 +120,5 @@ def TS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
                  + I[i, t, s] ==
                  gp.quicksum(alpha[i, tau, t, s] * x[i, tau] for tau in range(time)))
                 for i in range(comp) for t in range(time) for s in range(scenarios))
-    m.setParam("BarHomogeneous", 1)
+    
     return m, x, lambda_w, y, I, A, D_term, rho, Gamma
