@@ -137,7 +137,7 @@ inst = "Oh_et_al_1"
 # SPECIFIC CONFIGS (one at a time)
 #=============================================
 # in this research we explore the ATO problem with several model formulations. They are detailed below.
-# depending on their nature, thwy will be in either the models or the sol_approach folders.
+# depending on their nature, they will be in either the models or the sol_approach folders.
 #=============================================
 
 Model = "MS_linear_affine"

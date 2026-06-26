@@ -2,15 +2,11 @@ from data.generator import epsilon_ms, delta_ms, lead_times_ms
 from data.params import parametros, bill_of_materials, price_set
 
 from models.multistage import Multistage_problem
-from models.multistage_FP import Multistage_problem_Fix_price
-
 from models.linealization_prop import MS_linear, TS_linear
-from models.affine_funct_app import MS_linear_affine, MS_affine_cts, MS_affine_mccormick
-
+from models.affine_funct_app import MS_linear_affine, MS_affine_cts
 from sol_approach.price_app_eval import Affine_eval, Relaxed_eval
 from sol_approach.twostage_affine import TS_linear_affine
 from sol_approach.iterative_heuristic import Iter_policy
-
 from uncertainty_analysis.sto_computation import uncertainty_analysis
 
 from output_config.results_output import export
@@ -83,11 +79,6 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
             w_sim = pd.read_excel(f"var_results/MS_benders_inst{seed}.xlsx", sheet_name='W_sol', index_col=[0, 1, 2])
             fix_w_from_lambda(m, w_vars, w_sim, prod, stages, len(price), scenarios)
             
-    elif Model == "MS_FP": #Non-linear model with non-anticipativity relaxed for pricing (1st stage decision)
-        m, x_vars, w_vars, y_vars, I_vars, A, D_term = Multistage_problem_Fix_price(
-                                                            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-        
-
 
     elif Model == "MS_linear": # Linear model (base model)
         print(f"\n--- Construyendo modelo linealizado ---    w relajado: {W_cts}")
@@ -106,7 +97,6 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
             fix_w_from_lambda(m, w_vars, w_sim, prod, stages, len(price), scenarios)
 
 
-
     elif Model == "MS_linear_affine": # Pricing approximation via affine functions (LP model)
         if W_cts:
             m, x_vars, w_vars, y_vars, I_vars, A, D_term, rho, gamma, K_features = MS_affine_cts(
@@ -120,7 +110,6 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, I0)     
 
 
-
     elif Model == "Affine_eval": # Approximation and evaluation of MS_linear_affine pricing policy into MS_linear (accounts for solving these two)
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Affine_eval(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
@@ -132,7 +121,6 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
     
 
-        
     elif Model == "Iterative_heuristic": # Iteration between Pricing only model and ATO model.
         m, obj, ex_time, iteration = Iter_policy(seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         if m == None:
