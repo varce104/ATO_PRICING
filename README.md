@@ -84,10 +84,8 @@ det = False   # True → deterministic (averaged), False → stochastic
 | Key | Description |
 |-----|-------------|
 | `MS` | Standard multistage (nonlinear) |
-| `MS_FP` | Multistage, pricing as here-and-now decision |
 | `MS_linear` | Linearized multistage MILP |
 | `MS_linear_affine` | Linearized + affine function approximation |
-| `TS_linear_affine` | Two-stage affine approximation |
  
 **Literature instances** — set `inst` to one of:
  
