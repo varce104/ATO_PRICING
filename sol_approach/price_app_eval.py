@@ -20,7 +20,7 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
     import time
     prod, pr = len(A[0]), len(price)
 
-    m_af, _, lam_w, _, _, _, _, _, _ = MS_linear_affine(
+    m_af, _, lam_w, _, _, _, _, _, _, _ = MS_linear_affine(
                     seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0)
     
     m_af.setParam('OutputFlag', 1)
@@ -31,7 +31,8 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
 
 
     if m_af.status != GRB.OPTIMAL:
-        raise ValueError("MS_linear_affine no es óptimo.")
+        print("MS_linear_affine no es óptimo.")
+        return None, None, None, None, None, None, None, None
 
     obj_affine = m_af.objVal
     w_bin = extract_solution_arrays_affine_w(lam_w, prod, stages, scenarios, pr)

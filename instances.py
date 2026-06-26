@@ -1,4 +1,4 @@
-from models.solver import solve
+from solver import solve
 from output_config.mean_var import average_excel_solutions
 import pandas as pd
 
