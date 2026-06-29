@@ -5,7 +5,7 @@ import gurobipy as gp
 from gurobipy import GRB
 from itertools import product
 
-from models.affine_funct_app import MS_linear_affine
+from sol_approach.affine_funct_app import MS_linear_affine
 from models.linealization_prop import MS_linear
 from output_config.lambda_export import extract_solution_arrays_affine_w
 
