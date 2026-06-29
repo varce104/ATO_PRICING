@@ -24,13 +24,13 @@ ATO_PRICING/
 ├── models/
 │   ├── multistage.py              # Standard multistage stochastic model (nonlinear objective).
 │   ├── linealization_prop.py      # Linearized multistage model (MILP via auxiliary variable r).
-│   ├── twostage_dlt_slt.py        # Two-stage recourse model (deterministic/stochastic lead times).
-│   └── affine_funct_app.py        # Multistage affine function approximation (continuous relaxation of w).
+│   └── twostage_dlt_slt.py        # Two-stage recourse model (deterministic/stochastic lead times).
 │
 ├── sol_approach/
+│   ├── affine_funct_app.py        # Multistage affine function approximation (continuous relaxation of w).
+│   ├── twostage_affine.py         # Two-stage version of the affine approximation.
 │   ├── iterative_heuristic.py     # Iterative approach that decouples pricing decision from inventory problem (or ATO problem)
-│   ├── price_app_eval.py          # Evaluation of pricing approximation obtained from other models.
-│   └── twostage_affine.py         # Two-stage version of the affine approximation.
+│   └── price_app_eval.py          # Evaluation of pricing approximation obtained from other models.
 │
 ├── uncertainty_analysis/
 │   ├── vss.py                     # Value of the Stochastic Solution (VSS).
