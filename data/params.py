@@ -27,7 +27,8 @@ import random
 # Costs: C = 
 # Inventory Costs: I = C * 0.15
 
-def bill_of_materials(inst, comp, prod, min_use, max_use, seed, other):
+def bill_of_materials(inst, comp, prod, min_use, max_use, seed, other): 
+    seed = 6
     random.seed(seed)
     np.random.seed(seed)
     A = np.zeros((comp, prod), dtype=int)
@@ -54,15 +55,13 @@ def bill_of_materials(inst, comp, prod, min_use, max_use, seed, other):
                 size=k_j,
                 replace=False)
             A[chosen_components, j] = 1
-
-
     else:
         for j in range(prod):
             k_j = np.random.randint(min_use, max_use + 1)
             chosen_components = np.random.choice(
                 comp,
                 size=k_j,
-                replace=False)
+                replace=False) # False Only for 5x4, True otherwise
             A[chosen_components, j] = 1
 
         if other:
@@ -73,9 +72,7 @@ def bill_of_materials(inst, comp, prod, min_use, max_use, seed, other):
 
     return A
 
-
 def price_set(inst, a, b, inf, sup, step):
-
     if inst == "Oh_et_al_1":
         inf = 15; sup = 60; a = 100; b = 1.6
     
@@ -91,8 +88,8 @@ def price_set(inst, a, b, inf, sup, step):
     I0 = np.max([inf, sup])
     return list(range(inf, sup + 1, step)), a, b, I0
 
-
 def parametros(inst, comp, A, min_cost, max_cost, inv_factor, scenarios, seed, prob=True):
+    seed = 6
     random.seed(seed)
     np.random.seed(seed)
     
@@ -114,9 +111,14 @@ def parametros(inst, comp, A, min_cost, max_cost, inv_factor, scenarios, seed, p
         C = [random.randrange(min_cost, max_cost+1, 5) for i in range(comp)]
         I = [x * inv_factor for x in C]
 
-
     if prob:
         prob_scenarios = [1/scenarios for s in range(scenarios)] # probabilidad uniforme
         return C, I, prob_scenarios
     else:
         return C, I
+    
+# A = bill_of_materials( "None", 5, 4, 3, 4, 6, False)
+# C, I,_ = parametros( "None", 5, A, 5, 25, 0.2, 128, 6)
+# print(A)
+# print(C)
+# print(I)

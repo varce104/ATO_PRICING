@@ -35,8 +35,10 @@ def build_phi(ypsilon, delta, time, scenarios, prod, comp, I_fixed=None):
                     phi[s][t].append(val)
     return phi
 
-
 def revenue_max_v0(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed):
+    """
+    Revenue formulation that considers y = y[j,t,p,s]. Constraints for pricing AND demand.
+    """
     import time
     m_rev = gp.Model("Revenue_Max")
     m_rev.setParam('OutputFlag', 1)
@@ -45,9 +47,9 @@ def revenue_max_v0(prod, stages, scenarios, pr, price, D_term, pi, extended_phi,
     Gamma = m_rev.addVars(prod, stages, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="Gamma")
     lambda_w = m_rev.addVars(prod, stages, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="lambda_w")
 
-    y_bar = m_rev.addVars(prod, stages, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="r")
+    # y_bar = m_rev.addVars(prod, stages, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="r")
 
-    obj = gp.quicksum(pi[s] * price[p] * y_bar[j,t,p,s] for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)))
+    obj = gp.quicksum(pi[s] * price[p] * y_fixed[j,t,p,s] for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)))
     m_rev.setObjective(obj, GRB.MAXIMIZE)
 
     for j, t in product(range(prod), range(stages)):
@@ -58,11 +60,10 @@ def revenue_max_v0(prod, stages, scenarios, pr, price, D_term, pi, extended_phi,
     for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
         gamma_phi = gp.quicksum(Gamma[j, t, p, q] * extended_phi[s][t][q] for q in range(K_features))
         m_rev.addConstr(lambda_w[j, t, p, s] == rho[j, t, p] + gamma_phi)
-        
-        m_rev.addConstr(y_bar[j, t, p, s] <= lambda_w[j, t, p, s] * D_term[j, t, p, s])
+        m_rev.addConstr(y_fixed[j, t, p, s] <= lambda_w[j, t, p, s] * D_term[j, t, p, s]) # THIS VERSION STANDS OUT FROM THE OTHER BECAUSE IT CONSIDERS DEMAND VALUES.
 
-    for j, t, s in product(range(prod), range(stages), range(scenarios)):
-        m_rev.addConstr(gp.quicksum(y_bar[j, t, p, s] for p in range(pr)) == y_fixed[j, t, s])
+    # for j, t, s in product(range(prod), range(stages), range(scenarios)):
+    #     m_rev.addConstr(gp.quicksum(y_bar[j, t, p, s] for p in range(pr)) == y_fixed[j, t, s])
     
     m_rev.setParam('BarHomogeneous', 1)
 
@@ -78,8 +79,10 @@ def revenue_max_v0(prod, stages, scenarios, pr, price, D_term, pi, extended_phi,
     
     return m_rev.ObjVal, lambda_val, t1 - t0
 
-
 def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed):
+    """
+    Revenue formulation that considers y = y[j,t,s]. Only constraints are about pricing
+    """
     import time
     m_rev = gp.Model("Revenue_Max")
     m_rev.setParam('OutputFlag', 0)
@@ -131,7 +134,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     print("\n--------- Step 0: Solve MS_affine_approxiamtion (I=0 for features vector) ---------\n")
     phi_init = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed=None)
 
-    m_af, _, _, y_af, I_af, _, _, _, _, _ = MS_linear_affine(
+    m_af, _, _, y_af, y_bar, I_af, _, _, _, _, _ = MS_linear_affine(
         seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, phi_init, K_features)
     
     m_af.setParam('BarHomogeneous', 1)
@@ -145,23 +148,14 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         return None, None, None, None
 
     # Extraer I e y de MS_linear_affine
-    I_fixed = {(i, t, s): I_af[i, t, s].X 
-               for i, t, s in product(range(comp), range(stages), range(scenarios))}
-    y_fixed = {(j, t, s): y_af[j, t, s].X 
-               for j, t, s in product(range(prod), range(stages), range(scenarios))}
-
-    # Check y possible faults
-    # df = pd.DataFrame([(j, t, s, val)for (j, t, s), val in y_fixed.items()], columns=["j", "t", "s", "valor"])
-    # df_pivot = df.pivot_table(index=["j", "s"], columns="t", values="valor")
-    # print(df_pivot)
-    #
+    I_fixed = {(i, t, s): I_af[i, t, s].X for i, t, s in product(range(comp), range(stages), range(scenarios))} # Inventory
+    y_fixed = {(j, t, s): y_af[j, t, s].X for j, t, s in product(range(prod), range(stages), range(scenarios))} # Production (y[j,t,s])
+    # y_fixed = {(j, t, p, s): y_bar[j, t, p, s].X for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios))} # Production + revenue (y[j,t,p,s])
 
     best_obj = -np.inf
 
     Evol = []
     Evol.append({"iteration": 0, "obj": m_af.objVal, "solve_time": solve_time})
-
-
 
     for iteration in range(1, max_iter + 1):
         print(f"\n--- ITERATION {iteration} ---\n")
@@ -169,12 +163,13 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         # Paso A: construir phi con inventario actual y resolver revenue_max
         extended_phi = build_phi(ypsilon, delta, stages, scenarios, prod, comp, I_fixed)
         m_rev, lam_w_new, t_rev = revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed)
+        # m_rev, lam_w_new, t_rev = revenue_max_v0(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_features, y_fixed)
         
         solve_time += t_rev
         
         print(f"\n >>> Max Revenue Model. Obj: {m_rev:.2f} <<<\n")
 
-        m_inv, _, lambda_w, y_lin, I_lin, _, _, _, _, _ = MS_linear_affine(
+        m_inv, _, lambda_w, y_af, y_bar, I_lin, _, _, _, _, _ = MS_linear_affine(
             seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, 
                             extended_phi, K_features, lambda_fix=True)
 
@@ -206,14 +201,11 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         best_obj = obj_lin
 
         # Paso D: actualizar I e y para la siguiente iteración
-        I_fixed = {(i, t, s): I_lin[i, t, s].X 
-                   for i, t, s in product(range(comp), range(stages), range(scenarios))}
-        y_fixed = {(j, t, s): y_lin[j, t, s].X 
-                   for j, t, s in product(range(prod), range(stages), range(scenarios))}
+        I_fixed = {(i, t, s): I_af[i, t, s].X for i, t, s in product(range(comp), range(stages), range(scenarios))} # Inventory
+        y_fixed = {(j, t, s): y_af[j, t, s].X for j, t, s in product(range(prod), range(stages), range(scenarios))} # Production (y[j,t,s])
+        # y_fixed = {(j, t, p, s): y_bar[j, t, p, s].X for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios))} # Production + revenue (y[j,t,p,s])
         
         print(f"\nEffective Solve Time after iteration {iteration}: {solve_time:.2f} seconds\n")
-
-
 
 
     # --- Evaluación final en MS_linear con política binarizada ---

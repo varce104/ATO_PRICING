@@ -4,6 +4,7 @@ from gurobipy import GRB
 import random
 from itertools import product
 
+
 def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0=None, 
                                 phi_init=None, K_feat=None, lambda_fix=False): 
     random.seed(seed)
@@ -120,8 +121,8 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
 
     if lambda_fix == False: # Cuando se fija lambda, se trabaja como parámetro -> rho y Gamma no son necesarios (incluyendo restricciones asociadas)
 
-        rho = m.addVars(prod, time, pr, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="rho")
-        Gamma = m.addVars(prod, time, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="Gamma")
+        rho = m.addVars(prod, time, pr, vtype=GRB.CONTINUOUS, lb = -GRB.INFINITY, name="rho")
+        Gamma = m.addVars(prod, time, pr, K_features, vtype=GRB.CONTINUOUS, lb = -GRB.INFINITY, name="Gamma")
 
         for j, t in product(range(prod), range(time)):
             m.addConstr(gp.quicksum(rho[j, t, p] for p in range(pr)) == 1, name=f"sum_rho_{j}_{t}")
@@ -131,13 +132,11 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
         for j, t, p, s in product(range(prod), range(time), range(pr), range(scenarios)):
             prod_gamma_phi = gp.quicksum(Gamma[j, t, p, q] * phi[s][t][q] for q in range(K_features))
             m.addConstr(lambda_w[j, t, p, s] == rho[j, t, p] + prod_gamma_phi, name=f"def_lambda_{j}_{t}_{p}_{s}")
-
-        return m, x, lambda_w, y, I, A, D_term, rho, Gamma, K_features
-    
+            
+        return m, x, lambda_w, y, y_bar, I, A, D_term, rho, Gamma, K_features
     else:       
-        return m, x, lambda_w, y, I, A, D_term, None, None, K_features
+        return m, x, lambda_w, y, y_bar, I, A, D_term, None, None, K_features
     
-
 
 def MS_affine_cts(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0=None, phi_init=None, K_feat=None, lambda_fix=False): 
     random.seed(seed)

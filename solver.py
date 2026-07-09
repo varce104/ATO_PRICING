@@ -41,10 +41,10 @@ def extract_params(size, bom, costs, price_param, demand, lead_times):
     L = lead_times_ms(inst, comp, stages, scenarios, branching, seed, lb_L, ub_L, det)
 
     # Manual increase of price set
-    # price_factor = 10
-    # price = np.round(np.linspace(lb_price*price_factor,ub_price*price_factor,15)).astype(int)
+    # price_factor = 5
+    # price = np.round(np.linspace(lb_price * price_factor, ub_price * price_factor, 10)).astype(int)
     # # Intercept of demand function. Must increase in same factor, otherwise demand allways <0 -> model unfeasible
-    # a = a*price_factor 
+    # a = a * price_factor 
 
     if I0 is None: 
         I0 = [0] * comp
@@ -102,7 +102,7 @@ def solve(size, bom, costs, price_param, demand, lead_times, show):
             m, x_vars, w_vars, y_vars, I_vars, A, D_term, rho, gamma, K_features = MS_affine_cts(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         else:    
-            m, x_vars, w_vars, y_vars, I_vars, A, D_term, rho, gamma, K_features = MS_linear_affine(
+            m, x_vars, w_vars, y_vars, y_bar, I_vars, A, D_term, rho, gamma, K_features = MS_linear_affine(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         
     elif Model == "TS_linear_affine": # Two stage version of MS_linear_affine
