@@ -20,7 +20,7 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
     import time
     prod, pr = len(A[0]), len(price)
 
-    m_af, _, lam_w, _, _, _, _, _, _, _ = MS_linear_affine(
+    m_af, _, lam_w, _, _, _, _, _, _, _, _ = MS_linear_affine(
                     seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0)
     
     m_af.setParam('OutputFlag', 1)
@@ -49,9 +49,6 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
     print(f"[Affine eval] Obj afín: {obj_affine:.4f}")
     return m, x_vars, w_vars, y_vars, I_vars, A_out, D_term, solve_time
 
-
-
-
 def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
                  ypsilon, delta, a, b, C, H, pi, branching, I0):
     """
@@ -64,7 +61,7 @@ def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
 
     m_cts, _, w_cts, _, _, _, _ = MS_linear(
         seed, stages, scenarios, A, price, L, L_det,
-        ypsilon, delta, a, b, C, H, pi, branching, I0, MS_cts=True)
+        ypsilon, delta, a, b, C, H, pi, branching, I0, w_cts=True)
     m_cts.setParam('OutputFlag', 0)
     m_cts.Params.NonConvex = 2
 

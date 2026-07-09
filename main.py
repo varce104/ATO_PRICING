@@ -11,11 +11,11 @@ import math
 
 ##############################################
 # GENERAL SIZE #
-comp = 3
-prod = 2
-stages = 9
-branching = [2] * (stages - 1) # Binary tree
-scenarios = math.prod(branching)
+comp = 5 # 3X, 4, 5, 6, 7X
+prod = 4 # 2X, 3, 4, 5, 6X
+stages = 8                     
+branching = [2] * (stages - 1)     # Binary tree
+scenarios = math.prod(branching)   # 128 scenarios
 ##############################################
 
 
@@ -24,8 +24,8 @@ scenarios = math.prod(branching)
 # Here we have 2 options: 
 #   define randomly the BoM, where products use an amount of components between [min_use, max_use]
 #   or use a specific BoM defined in parameters.py (W model, N model, etc)
-min_use = 2
-max_use = 3
+min_use = 3
+max_use = 4
 other = False
 ##############################################
 
@@ -34,8 +34,8 @@ other = False
 # PRICES
 # The discrete set of prices defined by [lb_price, ub_price] in steps of step_price.
 # i.e, the discrete set [30,50] in steps of 2: [30, 32, 34,..., 48, 50]
-lb_price = 50
-ub_price = 100
+lb_price = 15
+ub_price = 60
 step_price = 5
 ##############################################
 
@@ -46,31 +46,29 @@ step_price = 5
 # (the steps can be modified in params.py)
 min_cost = 5
 max_cost = 25
-inv_factor = 0.15
+inv_factor = 0.2
 # I0: quantity to satisfy expected demand at given price
 # select price --> determine expected demand --> satisfy initial inventory 
 I0 = np.max([lb_price, ub_price]) # Currently set to satisfy minimum expected demand (>0)
 ##############################################
 
-
 ##############################################
 # MULTIPLICATIVE STOCHASTIC COMPONENT - DEMAND
 # epsilon: given by a uniform distribution U[lb_epsilon, ub_epsilon]
-lb_epsilon = 0.5
-ub_epsilon = 1.5
+lb_epsilon = 0.7
+ub_epsilon = 1.3
 ##############################################
 # ADDITIVE STOCHASTIC COMPONENT - DEMAND
 # delta: given by a normal distribution N(mu_delta, std_delta)
 mu_delta = 0
-std_delta = 8
+std_delta = 2
 ##############################################
 # PRICE LINEAR EXPRESSION - DEMAND
 # Decreasing linnear expression for the demand. given by: (a - b * w)
-a = 200
-b = 2.0
+a = 100
+b = 1.6
 # Full demand expression given by: epsilon[t,s] * (a - b * w[j,t,p,s]) + delta[j,t,s]
 ##############################################
-
 
 ##############################################
 # LEAD TIMES
@@ -82,7 +80,6 @@ lb_L = 1
 ub_L = 2
 det = False # False for stochastic lead times (While we tested with deterministic, we mostly focus in stochastic)
 ##############################################
-
 
 ##############################################
 # UNCERTAINTY ANALYSIS 
@@ -109,11 +106,10 @@ show_boxplot = False   # Save boxplot to figures for every decision variable
 show_candlestick = False   # Save candlestick to figures for every decision variable
 #=============================================
 time_limit = 900 # limit for each iteration
-seed = 5
-iter = 11 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+seed = 9
+iter = 7 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
-
 
 
 #=============================================
@@ -124,13 +120,13 @@ iter = 11 # 1 for a single instance. >2 for several (mean results, odd number re
 # These instances include all but stages, scenario tree and lead time distribution.
 #=============================================
 
-inst = "Oh_et_al_1"
+inst = "None"
 
 #=============================================
+# "None" -> Manual input of parameters. Beware of infeasibility!
 # "Oh_et_al_1" -> Simple W model (3x2) based on Oh et al. (2014)
 # "Oh_et_al_2" -> 5x4 model used by Akçay & Xu (2004) and Oh et al. (2014)
 # "Oh_et_al_3" -> 11 x 11 instance based on Oh et al. (2014)
-# "None" -> Manual input of parameters. Beware of infeasibility!
 #=============================================
 
 #=============================================
@@ -140,17 +136,18 @@ inst = "Oh_et_al_1"
 # depending on their nature, they will be in either the models or the sol_approach folders.
 #=============================================
 
-Model = "MS_linear"
+# Model = "Iterative_heuristic"
 
 #============================================
 #   "MS" -> Standard multistage model (non-linear).
 #============================================
 #   "MS_linear" -> multistage with linealized revenue (MILP). 
-W_cts = True # True if w relaxed // for affine approximation True if lambda in [lb_p, ub_p]
+W_cts = True # True if w relaxed, False if w={0,1} // for affine approximation True if lambda in [lb_p, ub_p]
 #============================================
 #   "MS_linear_affine" -> multistage with linealized revenue AND affine pricing policy.
 #============================================
 #   "Affine_eval" -> Solves MS_linear_affine, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
+#   "Relaxed_eval" -> Solve relaxed MS_linear, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
 #============================================
 #   "Iterative_heuristic" -> iterative heuristic: iterates between solving pricing problem and inventory problem (features vector contains inventory levels from inventory problem)
 #============================================
@@ -167,6 +164,25 @@ costs = min_cost, max_cost, inv_factor, I0
 price_param = lb_price, ub_price, step_price
 demand = a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta
 lead_times = lb_L, ub_L, det 
-show = show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts
 
+# Models for Workshop :)
+
+# Model = "MS_linear"
+# show = show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts
+# instances(size, bom, costs, price_param, demand, lead_times, show, iter)
+
+# Model = "MS_linear_affine"
+# show = show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts
+# instances(size, bom, costs, price_param, demand, lead_times, show, iter)
+
+# Model = "Affine_eval"
+# show = show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts
+# instances(size, bom, costs, price_param, demand, lead_times, show, iter)
+
+# Model = "Relaxed_eval"
+# show = show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts
+# instances(size, bom, costs, price_param, demand, lead_times, show, iter)
+
+Model = "Iterative_heuristic"
+show = show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts
 instances(size, bom, costs, price_param, demand, lead_times, show, iter)

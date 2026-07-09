@@ -22,7 +22,7 @@ def instances(size, bom, costs, price_param, demand, lead_times, show, iter):
         df = pd.DataFrame(results)
         print(df)
 
-        df.to_csv(f"var_results/inst_model_{Model}.csv", index=True)
+        df.to_excel(f"var_results/inst_model_{Model}.xlsx", index=True)
         
         if show_var:
             average_excel_solutions(files, output_path="var_results/mean_var_by_inst/avg_sol.xlsx")
