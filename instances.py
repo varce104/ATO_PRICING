@@ -1,28 +1,39 @@
+import os
+import pandas as pd
 from solver import solve
 from output_config.mean_var import average_excel_solutions
-import pandas as pd
 
+MASTER_RESULTS_PATH = "var_results/all_runs.xlsx"
 
-def instances(size, bom, costs, price_param, demand, lead_times, show, iter):
-    inst, comp, prod, stages, scenarios, branching, seed, time_limit = size
-    show_var, _,_,_,_,_,_,_,_,Model,_ = show
+def append_run_results(model_name, results, seeds):
+    df_new = pd.DataFrame(results)
+    df_new.insert(0, "seed", seeds)
+    df_new.insert(0, "Model", model_name)
 
-    if iter == 1:
-        solve(size, bom, costs, price_param, demand, lead_times, show)
+    if os.path.exists(MASTER_RESULTS_PATH):
+        df_old = pd.read_excel(MASTER_RESULTS_PATH)
+        df_all = pd.concat([df_old, df_new], ignore_index=True)
     else:
-        seeds = [seed + i for i in range(iter)]
-        results = []
-        files = []
+        df_all = df_new
 
-        for seed in seeds:
-            size = inst, comp, prod, stages, scenarios, branching, seed, time_limit
-            res = solve(size, bom, costs, price_param, demand, lead_times, show)
-            results.append(res)
-            files.append(f"var_results/MS_SL_inst{seed}.xlsx")
-        df = pd.DataFrame(results)
-        print(df)
+    df_all.to_excel(MASTER_RESULTS_PATH, index=False)
+    print(f"\n>> Resultados acumulados en: {MASTER_RESULTS_PATH} ({len(df_all)} corridas totales)\n")
+    return df_all
 
-        df.to_excel(f"var_results/inst_model_{Model}.xlsx", index=True)
-        
-        if show_var:
-            average_excel_solutions(files, output_path="var_results/mean_var_by_inst/avg_sol.xlsx")
+
+def instances(cfg):
+    seeds = [cfg.size.seed + i for i in range(cfg.iter)] if cfg.iter > 1 else [cfg.size.seed]
+    results, files = [], []
+
+    for seed in seeds:
+        cfg.size.seed = seed
+        res = solve(cfg)
+        results.append(res)
+        # suffix = "DL" if cfg.lead_times.det else "SL"
+        # files.append(f"var_results/MS_{suffix}_inst{seed}.xlsx")
+        files.append(f"var_results/MS_inst_{seed}.xlsx")
+
+    append_run_results(cfg.run.Model, results, seeds)
+
+    if cfg.run.show_var:
+        average_excel_solutions(files, output_path="var_results/mean_var_by_inst/avg_sol.xlsx")

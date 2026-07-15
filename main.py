@@ -1,7 +1,7 @@
-from solver import solve
 from instances import instances
 import numpy as np
 import math
+import copy
 
 #########################################################################
 #################   SOLVER ATO PRICING - MULTI-STAGE    #################
@@ -14,7 +14,8 @@ import math
 comp = 5 # 3X, 4, 5, 6, 7X
 prod = 4 # 2X, 3, 4, 5, 6X
 stages = 8                     
-branching = [2] * (stages - 1)     # Binary tree
+branching = [125,2,1,1,1,1,1]     # Binary tree
+
 scenarios = math.prod(branching)   # 128 scenarios
 ##############################################
 
@@ -106,8 +107,8 @@ show_boxplot = False   # Save boxplot to figures for every decision variable
 show_candlestick = False   # Save candlestick to figures for every decision variable
 #=============================================
 time_limit = 900 # limit for each iteration
-seed = 9
-iter = 7 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+seed = 5
+iter = 21 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
@@ -119,9 +120,7 @@ iter = 7 # 1 for a single instance. >2 for several (mean results, odd number rec
 # Here we can use very specific instances from the literature. All will be detailed in params.py and generator.py
 # These instances include all but stages, scenario tree and lead time distribution.
 #=============================================
-
 inst = "None"
-
 #=============================================
 # "None" -> Manual input of parameters. Beware of infeasibility!
 # "Oh_et_al_1" -> Simple W model (3x2) based on Oh et al. (2014)
@@ -129,20 +128,28 @@ inst = "None"
 # "Oh_et_al_3" -> 11 x 11 instance based on Oh et al. (2014)
 #=============================================
 
+
+
+from data.config import (ProblemSize, BomConfig, CostConfig, PriceConfig,
+                     DemandConfig, LeadTimeConfig, RunConfig, ExperimentConfig)
+
+size = ProblemSize(inst, comp, prod, stages,
+                    scenarios, branching, seed, time_limit)
+bom = BomConfig(min_use, max_use, other)
+costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+price = PriceConfig(lb_price, ub_price, step_price)
+demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
+lead_times = LeadTimeConfig(lb_L, ub_L, det)
+
 #=============================================
-# SPECIFIC CONFIGS (one at a time)
+# SPECIFIC CONFIGS
 #=============================================
 # in this research we explore the ATO problem with several model formulations. They are detailed below.
 # depending on their nature, they will be in either the models or the sol_approach folders.
-#=============================================
-
-# Model = "Iterative_heuristic"
-
 #============================================
 #   "MS" -> Standard multistage model (non-linear).
 #============================================
 #   "MS_linear" -> multistage with linealized revenue (MILP). 
-W_cts = True # True if w relaxed, False if w={0,1} // for affine approximation True if lambda in [lb_p, ub_p]
 #============================================
 #   "MS_linear_affine" -> multistage with linealized revenue AND affine pricing policy.
 #============================================
@@ -157,32 +164,15 @@ W_cts = True # True if w relaxed, False if w={0,1} // for affine approximation T
 #   "Relaxed_eval" ->  Relax MS_linear , extract and approximate cts policy to binary, evaluate in MS_linear with w fixed.
 #============================================
 
+run_configs = [
+    RunConfig(Model="MS_linear", W_cts=True)
+    ,RunConfig(Model="MS_linear_affine", W_cts=False)
+    ,RunConfig(Model="Affine_eval")
+    ,RunConfig(Model="Relaxed_eval")
+    ,RunConfig(Model="Iterative_heuristic")
+]
 
-size = inst, comp, prod, stages, scenarios, branching, seed, time_limit
-bom = min_use, max_use, other
-costs = min_cost, max_cost, inv_factor, I0
-price_param = lb_price, ub_price, step_price
-demand = a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta
-lead_times = lb_L, ub_L, det 
-
-# Models for Workshop :)
-
-# Model = "MS_linear"
-# show = show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts
-# instances(size, bom, costs, price_param, demand, lead_times, show, iter)
-
-# Model = "MS_linear_affine"
-# show = show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts
-# instances(size, bom, costs, price_param, demand, lead_times, show, iter)
-
-# Model = "Affine_eval"
-# show = show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts
-# instances(size, bom, costs, price_param, demand, lead_times, show, iter)
-
-# Model = "Relaxed_eval"
-# show = show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts
-# instances(size, bom, costs, price_param, demand, lead_times, show, iter)
-
-Model = "Iterative_heuristic"
-show = show_var, lambda_app, lambda_benders, show_heatmap, show_boxplot, show_candlestick, vss_calc, evpi_calc, vss_ts_calc, Model, W_cts
-instances(size, bom, costs, price_param, demand, lead_times, show, iter)
+for run in run_configs:
+    current_size = copy.deepcopy(size)
+    cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, iter)
+    instances(cfg)

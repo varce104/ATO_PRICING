@@ -121,7 +121,8 @@ def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_
 
 
 
-def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, max_iter=25, tol=1e-3):
+def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, 
+                branching_structure, I0, max_iter=15, tol=1e-3):
     comp, prod, pr = len(A), len(A[0]), len(price)
     import time
 
@@ -137,8 +138,9 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     m_af, _, _, y_af, y_bar, I_af, _, _, _, _, _ = MS_linear_affine(
         seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, phi_init, K_features)
     
+
     m_af.setParam('BarHomogeneous', 1)
-    m_af.setParam('OutputFlag', 1)
+    m_af.setParam('OutputFlag', 0)
 
     t0 = time.time()
     m_af.optimize()
@@ -169,7 +171,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         
         print(f"\n >>> Max Revenue Model. Obj: {m_rev:.2f} <<<\n")
 
-        m_inv, _, lambda_w, y_af, y_bar, I_lin, _, _, _, _, _ = MS_linear_affine(
+        m_inv, _, lambda_w, y_af, y_bar, I_af, _, _, _, _, _ = MS_linear_affine(
             seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0, 
                             extended_phi, K_features, lambda_fix=True)
 
@@ -178,7 +180,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
             lambda_w[j, t, p, s].UB = lam_w_new[j, t, p, s]
 
         m_inv.setParam('BarHomogeneous', 1)
-        m_inv.setParam('OutputFlag', 1)
+        m_inv.setParam('OutputFlag', 0)
 
         t0 = time.time()
         m_inv.optimize()
@@ -226,7 +228,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         w_final[j, t, p, s].UB = w_bin[j, t, p, s]
     
     m_final.setParam('BarHomogeneous', 1)
-    m_final.setParam('OutputFlag', 1)
+    m_final.setParam('OutputFlag', 0)
 
     t0 = time.time()
     m_final.optimize()
