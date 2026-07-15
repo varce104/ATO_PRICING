@@ -61,7 +61,7 @@ def bill_of_materials(inst, comp, prod, min_use, max_use, seed, other):
             chosen_components = np.random.choice(
                 comp,
                 size=k_j,
-                replace=False) # False Only for 5x4, True otherwise
+                replace=True) # False Only for 5x4, True otherwise
             A[chosen_components, j] = 1
 
         if other:
@@ -89,7 +89,7 @@ def price_set(inst, a, b, inf, sup, step):
     return list(range(inf, sup + 1, step)), a, b, I0
 
 def parametros(inst, comp, A, min_cost, max_cost, inv_factor, scenarios, seed, prob=True):
-    seed = 6
+    seed = 5
     random.seed(seed)
     np.random.seed(seed)
     
