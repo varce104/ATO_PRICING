@@ -163,15 +163,12 @@ lead_times = LeadTimeConfig(lb_L, ub_L, det)
 
 run_configs = [
     RunConfig(Model="MS_linear", W_cts=True)
-    # ,RunConfig(Model="MS_linear_affine", W_cts=False)
+    ,RunConfig(Model="MS_linear_affine", W_cts=False)
     ,RunConfig(Model="Relaxed_eval")
     ,RunConfig(Model="Affine_eval")
-    # ,RunConfig(Model="Iterative_heuristic")
+    ,RunConfig(Model="Iterative_heuristic")
 ]
 
-run_configs = [
-    RunConfig(Model="Affine_eval", W_cts=False)
-]
 
 for run in run_configs:
     current_size = copy.deepcopy(size)
