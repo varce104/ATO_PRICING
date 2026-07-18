@@ -45,10 +45,10 @@ class LeadTimeConfig:
 @dataclass
 class RunConfig:
     Model: str
-    W_cts: bool = True
+    W_cts: bool = False
+    features: bool = False
     show_var: bool = False
     lambda_app: bool = False
-    lambda_benders: bool = False
     show_heatmap: bool = False
     show_boxplot: bool = False
     show_candlestick: bool = False
