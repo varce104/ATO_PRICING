@@ -34,13 +34,9 @@ def solve(cfg):
     W_cts = cfg.run.W_cts
     show_var = cfg.run.show_var
     lambda_app = cfg.run.lambda_app
-    lambda_benders = cfg.run.lambda_benders
     show_heatmap = cfg.run.show_heatmap
     show_boxplot = cfg.run.show_boxplot
     show_candlestick = cfg.run.show_candlestick
-    vss_calc = cfg.run.vss_calc
-    evpi_calc = cfg.run.evpi_calc
-    vss_ts_calc = cfg.run.vss_ts_calc
     
     
     if inst is not None:
@@ -55,9 +51,6 @@ def solve(cfg):
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         if lambda_app:
             w_sim = pd.read_excel(f"var_results/MS_lambda_app_inst{seed}.xlsx", sheet_name='W_sol', index_col=[0, 1, 2])
-            fix_w_from_lambda(m, w_vars, w_sim, prod, stages, len(price), scenarios)
-        if lambda_benders:
-            w_sim = pd.read_excel(f"var_results/MS_benders_inst{seed}.xlsx", sheet_name='W_sol', index_col=[0, 1, 2])
             fix_w_from_lambda(m, w_vars, w_sim, prod, stages, len(price), scenarios)
             
 

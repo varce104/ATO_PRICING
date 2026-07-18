@@ -14,7 +14,7 @@ import copy
 comp = 5 # 3X, 4, 5, 6, 7X
 prod = 4 # 2X, 3, 4, 5, 6X
 stages = 8                     
-branching = [125,2,1,1,1,1,1]     # Binary tree
+branching = [2,2,2,2,2,2,2]   # Binary tree
 
 scenarios = math.prod(branching)   # 128 scenarios
 ##############################################
@@ -78,7 +78,7 @@ b = 1.6
 #   For deterministic: L = L[i,t]
 #   For stochastic: L = L[i,t,s]
 lb_L = 1
-ub_L = 2
+ub_L = 4
 det = False # False for stochastic lead times (While we tested with deterministic, we mostly focus in stochastic)
 ##############################################
 
@@ -98,9 +98,6 @@ vss_ts_calc = False
 ##############################################
 # EXPERIMENTAL SETTINGS
 show_var = False   # export solution in an excel file. Can be used for fine analisys of decision behavior.
-#=============================================
-lambda_app = False   # Save lambda for affine function approximation. 
-lambda_benders = False   # Not Working
 #=============================================
 show_heatmap = False   # Save heatmaps to figures for every decision variable
 show_boxplot = False   # Save boxplot to figures for every decision variable
@@ -166,10 +163,14 @@ lead_times = LeadTimeConfig(lb_L, ub_L, det)
 
 run_configs = [
     RunConfig(Model="MS_linear", W_cts=True)
-    ,RunConfig(Model="MS_linear_affine", W_cts=False)
-    ,RunConfig(Model="Affine_eval")
+    # ,RunConfig(Model="MS_linear_affine", W_cts=False)
     ,RunConfig(Model="Relaxed_eval")
-    ,RunConfig(Model="Iterative_heuristic")
+    ,RunConfig(Model="Affine_eval")
+    # ,RunConfig(Model="Iterative_heuristic")
+]
+
+run_configs = [
+    RunConfig(Model="Affine_eval", W_cts=False)
 ]
 
 for run in run_configs:
