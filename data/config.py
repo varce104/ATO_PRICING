@@ -52,6 +52,7 @@ class RunConfig:
     show_heatmap: bool = False
     show_boxplot: bool = False
     show_candlestick: bool = False
+    show_fulfillment: bool = False
     vss_calc: bool = False
     evpi_calc: bool = False
     vss_ts_calc: bool = False
