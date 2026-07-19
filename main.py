@@ -161,6 +161,8 @@ lead_times = LeadTimeConfig(lb_L, ub_L, det)
 #   "Relaxed_eval" ->  Relax MS_linear , extract and approximate cts policy to binary, evaluate in MS_linear with w fixed.
 #============================================
 
+phi_options = ["eps", "eps_delta", "eps_lt", "eps_delta_lt"]
+
 run_configs = [
     # RunConfig(Model="MS_linear", W_cts=True),
     # RunConfig(Model="MS_linear_affine", W_cts=False, show_fulfillment=True),
