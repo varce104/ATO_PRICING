@@ -70,33 +70,37 @@ def solve(cfg):
             fix_w_from_lambda(m, w_vars, w_sim, prod, stages, len(price), scenarios)
 
 
-    elif Model == "MS_linear_affine": # Pricing approximation via affine functions (LP model)
+    elif Model == "MS_linear_affine":
         if W_cts:
             m, x_vars, w_vars, y_vars, I_vars, A, D_term, rho, gamma, K_features = MS_affine_cts(
-                                                            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-        else:    
+                seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
+                phi_mode=cfg.run.phi_mode)
+        else:
             m, x_vars, w_vars, y_vars, y_bar, I_vars, A, D_term, rho, gamma, K_features = MS_linear_affine(
-                                                            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-        
-    elif Model == "TS_linear_affine": # Two stage version of MS_linear_affine
+                seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
+                phi_mode=cfg.run.phi_mode)
+
+    elif Model == "TS_linear_affine":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, _, _ = TS_linear_affine(
-                                                            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, I0)     
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, I0,
+            phi_mode=cfg.run.phi_mode)
 
 
-    elif Model == "Affine_eval": # Approximation and evaluation of MS_linear_affine pricing policy into MS_linear (accounts for solving these two)
+    elif Model == "Affine_eval":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Affine_eval(
-            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-        if m == None:
-            return {"incumbent": None, "bestbd": None, "gap": None, "time": None, "vss": None, "evpi": None, "vss_ts": None, "fill_rate": None}
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
+            phi_mode=cfg.run.phi_mode)
 
-    elif Model == "Relaxed_eval": # Approximation and evaluation of relaxed MS_linear pricing policy into MS_linear (accounts for solving these two)
+    elif Model == "Relaxed_eval":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Relaxed_eval(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-        if m == None:
-            return {"incumbent": None, "bestbd": None, "gap": None, "time": None, "vss": None, "evpi": None, "vss_ts": None, "fill_rate": None}
+        # Relaxed_eval no usa phi (resuelve MS_linear relajado en w, no la política afín) — sin cambios
 
-    elif Model == "Iterative_heuristic": # Iteration between Pricing only model and ATO model.
-        m, obj, ex_time, iteration = Iter_policy(seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=cfg.iter)
+
+    elif Model == "Iterative_heuristic":
+        m, obj, ex_time, iteration = Iter_policy(
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
+            max_iter=cfg.iter, phi_mode=cfg.run.phi_mode)
         if m == None:
             return {"incumbent": None, "bestbd": None, "gap": None, "time": None, "vss": None, "evpi": None, "vss_ts": None}
         else:

@@ -1,5 +1,3 @@
-# sol_approach/policy_eval.py
-
 import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
@@ -11,17 +9,12 @@ from output_config.lambda_export import extract_solution_arrays_affine_w
 
 
 def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
-                ypsilon, delta, a, b, C, H, pi, branching, I0):
-    """
-    Resuelve MS_linear_affine, extrae política binaria por argmax(lambda),
-    evalúa en MS_linear con w fijo.
-    Retorna el modelo MS_linear resuelto con la misma interfaz que solver.py espera.
-    """
-    import time
+                ypsilon, delta, a, b, C, H, pi, branching, I0, phi_mode="eps_delta"):
     prod, pr = len(A[0]), len(price)
 
     m_af, _, lam_w, _, _, _, _, _, _, _, _ = MS_linear_affine(
-                    seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0)
+        seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0,
+        phi_mode=phi_mode)
     
     m_af.setParam('OutputFlag', 1)
     m_af.setParam('BarHomogeneous', 1)
@@ -48,6 +41,8 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
 
     print(f"[Affine eval] Obj afín: {obj_affine:.4f}")
     return m, x_vars, w_vars, y_vars, I_vars, A_out, D_term, solve_time
+
+
 
 def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
                  ypsilon, delta, a, b, C, H, pi, branching, I0):

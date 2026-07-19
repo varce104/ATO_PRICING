@@ -4,152 +4,28 @@ from gurobipy import GRB
 import random
 from itertools import product
 
-#=========================================================================
-# Different configs for phi vector:
-#=========================================================================
-# 1.- phi = phi (epsilon)
-    # if K_feat is not None:
-    #     K_features = K_feat
-    # else:
-    #     K_features = (time - 1) * 1 # Solo 1 feature por periodo (ypsilon)
-
-    # if phi_init is not None:
-    #     phi = phi_init
-    # else:
-    #     phi = {}
-    #     for s in range(scenarios):
-    #         phi[s] = {}
-    #         for t in range(time):
-    #             phi[s][t] = [] 
-    #             for tau in range(time - 1):
-    #                 if tau < t:
-    #                     phi[s][t].append(ypsilon[s][tau])
-    #                 else:
-    #                     phi[s][t].append(0) 
-
-#=========================================================================
-
-# 2.- phi = phi(epsilon, delta)
-    # if K_feat is not None:
-    #     K_features = K_feat
-    # else:
-    #     K_features = (time - 1) * (1 + prod) # 1 (ypsilon) + prod (delta)
-
-    # if phi_init is not None:
-    #     phi = phi_init
-    # else:
-    #     phi = {}
-    #     for s in range(scenarios):
-    #         phi[s] = {}
-    #         for t in range(time):
-    #             phi[s][t] = [] 
-    #             for tau in range(time - 1):
-    #                 if tau < t:
-    #                     phi[s][t].append(ypsilon[s][tau])           
-    #                     for j in range(prod):
-    #                         phi[s][t].append(delta[s][j][tau])
-    #                 else:
-    #                     phi[s][t].append(0) 
-    #                     for j in range(prod):
-    #                         phi[s][t].append(0) 
-
-#=========================================================================
-
-# 3.- phi = phi(epsilon, lead times)
-# if K_feat is not None:
-#         K_features = K_feat
-# else:
-#     K_features = (time - 1) * (1 + comp) # 1 (ypsilon) + comp (Lead Times)
-
-# if phi_init is not None:
-#     phi = phi_init
-# else:
-#     phi = {}
-#     for s in range(scenarios):
-#         phi[s] = {}
-#         for t in range(time):
-#             phi[s][t] = [] 
-#             for tau in range(time - 1):
-#                 if tau < t:
-#                     phi[s][t].append(ypsilon[s][tau])
-#                     # Extraer el Lead Time dependiendo si es estocástico o determinista
-#                     for i in range(comp):
-#                         lt_val = L[i][tau] if L_det else L[i][tau][s]
-#                         phi[s][t].append(lt_val)
-#                 else:
-#                     phi[s][t].append(0) 
-#                     for i in range(comp):
-#                         phi[s][t].append(0)
-
-#=========================================================================
-
-# 4.- phi = phi(epsilon, delta, lead times)
-# if K_feat is not None:
-#         K_features = K_feat
-# else:
-#     K_features = (time - 1) * (1 + prod + comp) # 1 (ypsilon) + prod (delta) + comp (LT)
-
-# if phi_init is not None:
-#     phi = phi_init
-# else:
-#     phi = {}
-#     for s in range(scenarios):
-#         phi[s] = {}
-#         for t in range(time):
-#             phi[s][t] = [] 
-#             for tau in range(time - 1):
-#                 if tau < t:
-#                     phi[s][t].append(ypsilon[s][tau])
-#                     for j in range(prod):
-#                         phi[s][t].append(delta[s][j][tau])
-#                     for i in range(comp):
-#                         lt_val = L[i][tau] if L_det else L[i][tau][s]
-#                         phi[s][t].append(lt_val)
-#                 else:
-#                     phi[s][t].append(0) 
-#                     for j in range(prod):
-#                         phi[s][t].append(0)
-#                     for i in range(comp):
-#                         phi[s][t].append(0)
-#=========================================================================
+from sol_approach.phi_features import build_phi
 
 
-def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0=None, 
-                                phi_init=None, K_feat=None, lambda_fix=False): 
+def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
+                      branching_structure, I0=None, phi_init=None, K_feat=None, lambda_fix=False,phi_mode="eps_delta"):
+    
     random.seed(seed)
-    comp = len(A)
-    prod = len(A[0])
+    comp, prod = len(A), len(A[0])
     pr = len(price)
 
-    m = gp.Model("Modelo ATO Afín")
+    m = gp.Model("Affine rule model")
 
 #=========================================================================
-#=========================================================================
-
-    if K_feat is not None:
-        K_features = K_feat
-    else:
-        K_features = (time - 1) * (1 + prod) # 1 (ypsilon) + prod (delta)
 
     if phi_init is not None:
         phi = phi_init
+        if K_feat is None:
+            raise ValueError("Missing K_feat.")
+        K_features = K_feat
     else:
-        phi = {}
-        for s in range(scenarios):
-            phi[s] = {}
-            for t in range(time):
-                phi[s][t] = [] 
-                for tau in range(time - 1):
-                    if tau < t:
-                        phi[s][t].append(ypsilon[s][tau])           
-                        for j in range(prod):
-                            phi[s][t].append(delta[s][j][tau])
-                    else:
-                        phi[s][t].append(0) 
-                        for j in range(prod):
-                            phi[s][t].append(0) 
+        phi, K_features = build_phi(phi_mode, time, scenarios, prod, comp, ypsilon, delta, L, L_det)
 
-#=========================================================================
 #=========================================================================
     
     I = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, name="I", lb=0)
@@ -253,7 +129,8 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
     
 
 
-def MS_affine_cts(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0=None, phi_init=None, K_feat=None, lambda_fix=False): 
+def MS_affine_cts(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, 
+                  I0=None, phi_init=None, K_feat=None, lambda_fix=False,phi_mode="eps_delta"): 
     random.seed(seed)
     comp = len(A)
     prod = len(A[0])
@@ -263,30 +140,16 @@ def MS_affine_cts(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, 
 
     m = gp.Model("Modelo ATO Afín/lambda cts")
 
-    if K_feat is not None:
-        K_features = K_feat
-    else:
-        K_features = (time - 1) * (1 + prod)
+    m = gp.Model("Modelo ATO Afín")
 
     if phi_init is not None:
         phi = phi_init
+        if K_feat is None:
+            raise ValueError("Si se entrega phi_init, K_feat también debe especificarse.")
+        K_features = K_feat
     else:
-        phi = {}
-        for s in range(scenarios):
-            phi[s] = {}
-            for t in range(time):
-                phi[s][t] = [] 
-                for tau in range(time - 1):
-                    if tau < t:
-                        phi[s][t].append(ypsilon[s][tau])
-                        
-                        for j in range(prod):
-                            phi[s][t].append(delta[s][j][tau])
-                    else:
-                        phi[s][t].append(0) 
-                        for j in range(prod):
-                            phi[s][t].append(0) 
-    
+        phi, K_features = build_phi(phi_mode, time, scenarios, prod, comp, ypsilon, delta, L, L_det)
+
     I = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, name="I", lb=0)
     x = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, name="x", lb=0)
     y = m.addVars(prod, time, scenarios, vtype=GRB.CONTINUOUS, name="y", lb=0)
@@ -387,9 +250,3 @@ def MS_affine_cts(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     
     else:       
         return m, x, lambda_w, y, I, A, D_term, None, None, K_features
-
-
-
-
-
-

@@ -2,15 +2,11 @@ import gurobipy as gp
 from gurobipy import GRB
 import random
 from itertools import product as iproduct
+from sol_approach.phi_features import build_phi
 
-def TS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, I0=None):
-    """
-    Two-stage affine function approximation.
-    x[i,t]        : first-stage (here-and-now), no scenario index.
-    rho, Gamma     : affine policy parameters (first-stage).
-    lambda_w[j,t,p,s] = rho[j,t,p] + Gamma[j,t,p,:] · phi[s,t]
-    r, y, I        : second-stage (recourse).
-    """
+
+def TS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
+                      I0=None, phi_mode="eps_delta"):
     random.seed(seed)
     comp = len(A)
     prod = len(A[0])
@@ -18,27 +14,13 @@ def TS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
 
     m = gp.Model("TS_ATO_Affine")
 
-    K_features = (time - 1) * (1 + prod)
-
-    phi = {}
-    for s in range(scenarios):
-        phi[s] = {}
-        for t in range(time):
-            phi[s][t] = []
-            for tau in range(time - 1):
-                if tau < t:
-                    phi[s][t].append(ypsilon[s][tau])
-                    for j in range(prod):
-                        phi[s][t].append(delta[s][j][tau])
-                else:
-                    phi[s][t].append(0)
-                    for j in range(prod):
-                        phi[s][t].append(0)
+    phi, K_features = build_phi(phi_mode, time, scenarios, prod, comp, ypsilon, delta, L, L_det)
 
     # --- First-stage ---
     x       = m.addVars(comp, time, vtype=GRB.CONTINUOUS, lb=0, name="x")
     rho     = m.addVars(prod, time, pr, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="rho")
     Gamma   = m.addVars(prod, time, pr, K_features, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="Gamma")
+
 
     # --- Second-stage ---
     I        = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="I")
