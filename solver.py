@@ -37,7 +37,7 @@ def solve(cfg):
     show_heatmap = cfg.run.show_heatmap
     show_boxplot = cfg.run.show_boxplot
     show_candlestick = cfg.run.show_candlestick
-    
+    show_fulfillment = cfg.run.show_fulfillment
     
     if inst is not None:
         comp = len(A); prod = len(A[0])
@@ -87,12 +87,13 @@ def solve(cfg):
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Affine_eval(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         if m == None:
-            return {"incumbent": None, "bestbd": None, "gap": None, "time": None, "vss": None, "evpi": None, "vss_ts": None}
+            return {"incumbent": None, "bestbd": None, "gap": None, "time": None, "vss": None, "evpi": None, "vss_ts": None, "fill_rate": None}
 
     elif Model == "Relaxed_eval": # Approximation and evaluation of relaxed MS_linear pricing policy into MS_linear (accounts for solving these two)
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Relaxed_eval(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-    
+        if m == None:
+            return {"incumbent": None, "bestbd": None, "gap": None, "time": None, "vss": None, "evpi": None, "vss_ts": None, "fill_rate": None}
 
     elif Model == "Iterative_heuristic": # Iteration between Pricing only model and ATO model.
         m, obj, ex_time, iteration = Iter_policy(seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=cfg.iter)
@@ -142,7 +143,8 @@ def solve(cfg):
     opt_time = m.Runtime + solve_time
     vss, evpi, vss_ts = uncertainty_analysis(cfg, incumbent)
 
-    solutions = [seed, x_vars, w_vars, I_vars, y_vars, D_term, price, stages, scenarios, A, det, lambda_app, Model, rho, gamma, K_features]
-    export(show_var, show_heatmap, show_boxplot, show_candlestick, solutions)
+    solutions = [seed, x_vars, w_vars, I_vars, y_vars, D_term, price, stages, scenarios, A, det,
+                 lambda_app, Model, rho, gamma, K_features, mult, add, a, b, pi]
+    fill_rate = export(show_var, show_heatmap, show_boxplot, show_candlestick, show_fulfillment, solutions)
 
-    return {"incumbent": incumbent, "bestbd": bestbd, "gap": gap, "time": opt_time, "vss": vss, "evpi": evpi, "vss_ts": vss_ts}
+    return {"incumbent": incumbent, "bestbd": bestbd, "gap": gap, "time": opt_time, "vss": vss, "evpi": evpi, "vss_ts": vss_ts, "fill_rate": fill_rate}

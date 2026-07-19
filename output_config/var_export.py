@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-
+from itertools import product
 
 
 def get_values(var_dict, shape):
@@ -13,29 +13,24 @@ def get_values(var_dict, shape):
 
 def extract_solution_arrays(x_vars, w_vars, I_vals, y_vals, D_term, price, comp, prod, time, scenarios, pr):
     x_val = np.zeros((comp, time, scenarios))
-    for i in range(comp):
-        for t in range(time):
-            for s in range(scenarios):
-                x_val[i, t, s] = x_vars[i, t, s].X
+    for i, t, s in product(range(comp), range(time), range(scenarios)):
+        x_val[i, t, s] = x_vars[i, t, s].X
 
     price_eff = np.zeros((prod, time, scenarios))
-    for j in range(prod):
-        for t in range(time):
-            for s in range(scenarios):
-                for p in range(pr):
-                    if w_vars[j, t, p, s].X > 0.5:
-                        price_eff[j, t, s] = price[p]
+    for j, t, s, p in product(range(prod), range(time), range(scenarios), range(pr)):
+        if w_vars[j, t, p, s].X > 0.5:
+            price_eff[j, t, s] = price[p]
 
     I_vals = get_values(I_vals, (comp, time, scenarios))
     y_vals = get_values(y_vals, (prod, time, scenarios))
 
-    d_vals = np.zeros((prod, time, scenarios))
-    for j in range(prod):
-        for t in range(time):
-            for s in range(scenarios):
-                d_vals[j, t, s] = D_term[j, t, s].getValue()
 
-    return x_val, price_eff, I_vals, y_vals, d_vals
+    # d_vals = np.zeros((prod, time, scenarios, pr))
+    # for j, t, s, p in product(range(prod), range(time), range(scenarios), range(pr)):
+    #     d_vals[j, t, p, s] += D_term[j, t, p, s]
+
+
+    return x_val, price_eff, I_vals, y_vals
 
 
 
