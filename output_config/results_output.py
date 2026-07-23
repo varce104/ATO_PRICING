@@ -1,9 +1,12 @@
 from output_config.var_export import export_solution_to_excel, extract_solution_arrays
+
 from output_config.graphs.heatmap import plot_instance_decisions
 from output_config.graphs.boxplot import plot_boxplot
 from output_config.graphs.candlestick import plot_candlestick, plot_fulfillment_candlestick
+
 from output_config.lambda_export import export_solution_to_excel_affine, export_affine_params_to_excel
 from output_config.fulfillment import demand_fulfillment
+from output_config.kpi_performance import calculate_global_kpis
 import numpy as np
 
 
