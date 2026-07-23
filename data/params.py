@@ -27,7 +27,7 @@ import random
 # Costs: C = 
 # Inventory Costs: I = C * 0.15
 
-def bill_of_materials(inst, comp, prod, min_use, max_use, seed, other): 
+def bill_of_materials(inst, comp, prod, min_use, max_use, seed, other=False): 
     seed = 6
     random.seed(seed)
     np.random.seed(seed)

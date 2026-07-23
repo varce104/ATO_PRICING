@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from solver import solve
+from pipeline.solver import solve
 from output_config.mean_var import average_excel_solutions
 
 MASTER_RESULTS_PATH = "var_results/all_runs.xlsx"
@@ -29,11 +29,11 @@ def instances(cfg):
         cfg.size.seed = seed
         res = solve(cfg)
         results.append(res)
-        # suffix = "DL" if cfg.lead_times.det else "SL"
-        # files.append(f"var_results/MS_{suffix}_inst{seed}.xlsx")
         files.append(f"var_results/MS_inst_{seed}.xlsx")
 
     append_run_results(cfg.run.Model, results, seeds)
 
     if cfg.run.show_var:
         average_excel_solutions(files, output_path="var_results/mean_var_by_inst/avg_sol.xlsx")
+
+    return results, seeds

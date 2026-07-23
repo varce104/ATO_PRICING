@@ -1,4 +1,4 @@
-from instances import instances
+from pipeline.instances import instances
 import numpy as np
 import math
 import copy
@@ -15,6 +15,12 @@ comp = 5 # 3X, 4, 5, 6, 7X
 prod = 4 # 2X, 3, 4, 5, 6X
 stages = 8                     
 branching = [2,2,2,2,2,2,2]   # Binary tree
+
+# [5,5,5,2,1,1,1]
+# [10,5,2,2,1,1,1]
+# [20,5,2,1,1,1,1]
+# [50,2,2,1,1,1,1]
+# [125,2,1,1,1,1,1]
 
 scenarios = math.prod(branching)   # 128 scenarios
 ##############################################
@@ -161,7 +167,6 @@ lead_times = LeadTimeConfig(lb_L, ub_L, det)
 #   "Relaxed_eval" ->  Relax MS_linear , extract and approximate cts policy to binary, evaluate in MS_linear with w fixed.
 #============================================
 
-phi_options = ["eps", "eps_delta", "eps_lt", "eps_delta_lt"]
 
 run_configs = [
     # RunConfig(Model="MS_linear", W_cts=True),
@@ -175,4 +180,4 @@ run_configs = [
 for run in run_configs:
     current_size = copy.deepcopy(size)
     cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, iter)
-    instances(cfg)
+    _,_ = instances(cfg)
