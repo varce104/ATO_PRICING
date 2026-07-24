@@ -37,7 +37,7 @@ def solve(cfg):
     show_heatmap = cfg.run.show_heatmap
     show_boxplot = cfg.run.show_boxplot
     show_candlestick = cfg.run.show_candlestick
-    show_fulfillment = cfg.run.show_fulfillment
+    show_kpis = cfg.run.show_kpis
     
     if inst is not None:
         comp = len(A); prod = len(A[0])
@@ -45,6 +45,7 @@ def solve(cfg):
 
     solve_time = 0
     rho=0; gamma=0; K_features=0
+    iterations=None
 
     if Model == "MS": #Non-linear model
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = Multistage_problem(
@@ -98,14 +99,10 @@ def solve(cfg):
 
 
     elif Model == "Iterative_heuristic":
-        m, obj, ex_time, iteration = Iter_policy(
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, iterations = Iter_policy(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
             max_iter=cfg.iter, phi_mode=cfg.run.phi_mode)
-        if m == None:
-            return {"incumbent": None, "bestbd": None, "gap": None, "time": None, "vss": None, "evpi": None, "vss_ts": None}
-        else:
-            return {"incumbent": obj, "bestbd": obj, "gap": ((obj-obj)/obj*100), "time": ex_time, "iteration": iteration}
-        
+
 #=====================================================================================================================================
     else:
         print("\nWrong input, try again...")
@@ -148,7 +145,13 @@ def solve(cfg):
     vss, evpi, vss_ts = uncertainty_analysis(cfg, incumbent)
 
     solutions = [seed, x_vars, w_vars, I_vars, y_vars, D_term, price, stages, scenarios, A, det,
-                 lambda_app, Model, rho, gamma, K_features, mult, add, a, b, pi]
-    fill_rate = export(show_var, show_heatmap, show_boxplot, show_candlestick, show_fulfillment, solutions)
+                 lambda_app, Model, rho, gamma, K_features, mult, add, a, b, pi, I0]
 
-    return {"incumbent": incumbent, "bestbd": bestbd, "gap": gap, "time": opt_time, "vss": vss, "evpi": evpi, "vss_ts": vss_ts, "fill_rate": fill_rate}
+    results = {"incumbent": incumbent, "bestbd": bestbd, "gap": gap, "time": opt_time, "iterations (IH)": iterations, "vss": vss, "evpi": evpi, "vss_ts": vss_ts}
+
+    if show_kpis:
+        results["Fill Rate"], results["Utilization Rate"], results["Inventory Service Rate"], results["Weighted Avg Price"] = export(
+            show_var, show_heatmap, show_boxplot, show_candlestick, show_kpis, solutions)
+        return results
+    else:
+        return results

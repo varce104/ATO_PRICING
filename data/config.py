@@ -52,7 +52,7 @@ class RunConfig:
     show_heatmap: bool = False
     show_boxplot: bool = False
     show_candlestick: bool = False
-    show_fulfillment: bool = False
+    show_kpis: bool = False
     phi_mode: str = "eps_delta"   # "eps" | "eps_delta" | "eps_lt" | "eps_delta_lt"
     vss_calc: bool = False
     evpi_calc: bool = False

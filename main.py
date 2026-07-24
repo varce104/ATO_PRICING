@@ -109,6 +109,8 @@ show_heatmap = False   # Save heatmaps to figures for every decision variable
 show_boxplot = False   # Save boxplot to figures for every decision variable
 show_candlestick = False   # Save candlestick to figures for every decision variable
 #=============================================
+show_kpis=True   # Calculate and print KPIs for fulfillment, utilization, inventory ratio and weighted average price
+#=============================================
 time_limit = 900 # limit for each iteration
 seed = 5
 iter = 2 # 1 for a single instance. >2 for several (mean results, odd number recommended)
@@ -169,13 +171,12 @@ lead_times = LeadTimeConfig(lb_L, ub_L, det)
 
 
 run_configs = [
-    # RunConfig(Model="MS_linear", W_cts=True),
+    RunConfig(Model="MS_linear", W_cts=True, show_kpis=show_kpis),
     # RunConfig(Model="MS_linear_affine", W_cts=False, show_fulfillment=True),
-    RunConfig(Model="Relaxed_eval", show_fulfillment=True),
-    RunConfig(Model="Affine_eval", show_fulfillment=True),
-    # RunConfig(Model="Iterative_heuristic")
+    RunConfig(Model="Relaxed_eval", show_kpis=show_kpis),
+    RunConfig(Model="Affine_eval", show_kpis=show_kpis),
+    RunConfig(Model="Iterative_heuristic", show_kpis=show_kpis)
 ]
-
 
 for run in run_configs:
     current_size = copy.deepcopy(size)

@@ -43,7 +43,6 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
     return m, x_vars, w_vars, y_vars, I_vars, A_out, D_term, solve_time
 
 
-
 def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
                  ypsilon, delta, a, b, C, H, pi, branching, I0):
     """
@@ -51,7 +50,6 @@ def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
     evalúa en MS_linear con w fijo.
     Retorna el modelo MS_linear resuelto con la misma interfaz que solver.py espera.
     """
-    import time
     comp, prod, pr = len(A), len(A[0]), len(price)
 
     m_cts, _, w_cts, _, _, _, _ = MS_linear(
@@ -62,7 +60,6 @@ def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
 
     m_cts.optimize()
     solve_time = m_cts.Runtime
-
 
     if m_cts.status != GRB.OPTIMAL:
         raise ValueError("MS_linear relajado no es óptimo.")
