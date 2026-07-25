@@ -7,7 +7,7 @@ from itertools import product
 from sol_approach.affine_funct_app import MS_linear_affine
 from models.linealization_prop import MS_linear
 from output_config.lambda_export import extract_solution_arrays_affine_w
-from sol_approach.phi_features import build_phi as build_phi_base
+from data.phi_features import build_phi as build_phi_base
 
 
 def build_phi(mode, ypsilon, delta, time, scenarios, prod, comp, L=None, L_det=None, I_fixed=None):
@@ -167,31 +167,15 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         best_p = max(range(pr), key=lambda p: lambda_w[j, t, p, s].X)
         w_bin[j, t, best_p, s] = 1.0
 
-    m_final, x_final, w_final, y_final, I_final, _, _ = MS_linear(
+    m, x_vars, w_vars, y_vars, I_vars, A, D_term = MS_linear(
         seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
         branching_structure, I0)
 
     for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
-        w_final[j, t, p, s].LB = w_bin[j, t, p, s]
-        w_final[j, t, p, s].UB = w_bin[j, t, p, s]
+        w_vars[j, t, p, s].LB = w_bin[j, t, p, s]
+        w_vars[j, t, p, s].UB = w_bin[j, t, p, s]
     
-    m_final.setParam('BarHomogeneous', 1)
-    m_final.setParam('OutputFlag', 0)
+    return m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, iteration
 
-    t0 = time.time()
-    m_final.optimize()
-    solve_time += time.time() - t0
-
-    if m_final.status != GRB.OPTIMAL:
-        print("MS_linear unfeasible, return best affine approx. obj.")
-        return m_inv, best_obj, solve_time, iteration
-
-    obj_final = m_final.ObjVal
-    print(f"\n>>> Obj. MS_linear: {obj_final:.2f} <<<\n")
-    print(f">>> Gap to affine approx. obj (for reference only): {obj_final - best_obj:.2f} <<<\n")
-
-    print(Evol)
-
-    return m_final, obj_final, solve_time, iteration
 
 

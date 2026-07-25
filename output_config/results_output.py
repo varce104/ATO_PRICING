@@ -10,17 +10,16 @@ from output_config.kpi_performance import calculate_global_kpis
 import numpy as np
 
 
-def export(show_sol, show_heatmap, show_boxplot, show_candlestick, show_fulfillment, vals):
+def export(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, solutions):
     (seed, x_vars, w_vars, I_vars, y_vars, D_term, price, time, scenarios, A, det,
-     lambda_app, Model, rho, gamma, K_features, mult, add, a, b, pi) = vals
+     lambda_app, Model, rho, gamma, K_features, mult, add, a, b, pi, I0) = solutions
 
     if lambda_app and Model in ("MS_linear_affine", "TS_linear_affine"):
         export_solution_to_excel_affine(f"var_results/MS_lambda_app_inst{seed}.xlsx", w_vars, time, scenarios, len(price), A, Model)
         export_affine_params_to_excel(f"var_results/MS_affine_params_inst{seed}.xlsx", rho, gamma, len(A[0]), time, len(price), K_features)
         return None
 
-    need_extraction = show_sol or show_heatmap or show_boxplot or show_candlestick or show_fulfillment
-    fill_global = None
+    need_extraction = show_sol or show_heatmap or show_boxplot or show_candlestick or show_kpis
 
     if need_extraction:
         x_val, price_eff, I_val, y_val = extract_solution_arrays(
@@ -46,9 +45,8 @@ def export(show_sol, show_heatmap, show_boxplot, show_candlestick, show_fulfillm
     if show_candlestick:
         plot_candlestick(x_val, price_eff, I_val, y_val, D_term)
 
-    if show_fulfillment:
-        _, fill_ts, _, fill_global = demand_fulfillment(y_val, price_eff, mult, add, a, b, pi)
-        fill_ts = fill_ts * 100
-        plot_fulfillment_candlestick(fill_ts, filename=f"figures/fulfill_rate_{Model}_inst_{seed}.png")
+    if show_kpis:
+        # Llamada directa pasando los arrays Numpy y parámetros desempaquetados de 'solutions'
+        FR, UR, ISR, VWAP = calculate_global_kpis(x_val, price_eff, y_val, I_val, A, mult, add, a, b, pi, I0)
 
-    return fill_global
+    return FR, UR, ISR, VWAP

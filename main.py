@@ -84,7 +84,7 @@ b = 1.6
 #   For deterministic: L = L[i,t]
 #   For stochastic: L = L[i,t,s]
 lb_L = 1
-ub_L = 4
+ub_L = 2
 det = False # False for stochastic lead times (While we tested with deterministic, we mostly focus in stochastic)
 ##############################################
 
@@ -108,6 +108,8 @@ show_var = False   # export solution in an excel file. Can be used for fine anal
 show_heatmap = False   # Save heatmaps to figures for every decision variable
 show_boxplot = False   # Save boxplot to figures for every decision variable
 show_candlestick = False   # Save candlestick to figures for every decision variable
+#=============================================
+show_kpis=True   # Calculate and print KPIs for fulfillment, utilization, inventory ratio and weighted average price
 #=============================================
 time_limit = 900 # limit for each iteration
 seed = 5
@@ -169,13 +171,12 @@ lead_times = LeadTimeConfig(lb_L, ub_L, det)
 
 
 run_configs = [
-    # RunConfig(Model="MS_linear", W_cts=True),
+    RunConfig(Model="MS_linear", W_cts=True, show_kpis=show_kpis),
     # RunConfig(Model="MS_linear_affine", W_cts=False, show_fulfillment=True),
-    RunConfig(Model="Relaxed_eval", show_fulfillment=True),
-    RunConfig(Model="Affine_eval", show_fulfillment=True),
-    # RunConfig(Model="Iterative_heuristic")
+    RunConfig(Model="Relaxed_eval", show_kpis=show_kpis),
+    RunConfig(Model="Affine_eval", show_kpis=show_kpis),
+    RunConfig(Model="Iterative_heuristic", show_kpis=show_kpis)
 ]
-
 
 for run in run_configs:
     current_size = copy.deepcopy(size)

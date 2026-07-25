@@ -28,6 +28,6 @@ def extract_params(cfg):
     if I0 is None:
         I0 = [0] * comp
     else:
-        I0 = [gp.quicksum((a - b * I0)*A[i][j] for j in range(prod)) for i in range(comp)]
+        I0 = [sum((a - b * I0)*A[i][j] for j in range(prod)) for i in range(comp)]
 
     return C, H, pi, A, price, mult, add, L, a, b, I0

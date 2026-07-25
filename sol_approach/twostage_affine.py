@@ -2,7 +2,7 @@ import gurobipy as gp
 from gurobipy import GRB
 import random
 from itertools import product as iproduct
-from sol_approach.phi_features import build_phi
+from data.phi_features import build_phi
 
 
 def TS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
@@ -25,7 +25,7 @@ def TS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
     # --- Second-stage ---
     I        = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="I")
     y        = m.addVars(prod, time, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="y")
-    r        = m.addVars(prod, time, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="r")
+    y_bar        = m.addVars(prod, time, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="r")
     lambda_w = m.addVars(prod, time, pr, scenarios, vtype=GRB.CONTINUOUS, lb=0, name="lambda_w")
 
     # Affine policy constraints
@@ -46,17 +46,17 @@ def TS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
         D_term[j, t, p, s] = ypsilon[s][t] * (a - b * price[p]) + delta[s][j][t]
 
     # Objective: x cost is deterministic (no pi[s])
-    f = (gp.quicksum(pi[s] * price[p] * r[j, t, p, s] for s in range(scenarios) for j in range(prod) for t in range(time) for p in range(pr))
+    f = (gp.quicksum(pi[s] * price[p] * y_bar[j, t, p, s] for s in range(scenarios) for j in range(prod) for t in range(time) for p in range(pr))
        - gp.quicksum(pi[s] * H[i] * I[i, t, s] for s in range(scenarios) for i in range(comp) for t in range(time))
        - gp.quicksum(C[i] * x[i, t] for i in range(comp) for t in range(time)))
 
     m.setObjective(f, GRB.MAXIMIZE)
 
-    m.addConstrs(r[j, t, p, s] <= lambda_w[j, t, p, s] * D_term[j, t, p, s]
+    m.addConstrs(y_bar[j, t, p, s] <= lambda_w[j, t, p, s] * D_term[j, t, p, s]
                  for j in range(prod) for t in range(time)
                  for p in range(pr) for s in range(scenarios))
 
-    m.addConstrs(y[j, t, s] == gp.quicksum(r[j, t, p, s] for p in range(pr))
+    m.addConstrs(y[j, t, s] == gp.quicksum(y_bar[j, t, p, s] for p in range(pr))
                  for j in range(prod) for t in range(time) for s in range(scenarios))
 
     # Inventory balance — x has no scenario index

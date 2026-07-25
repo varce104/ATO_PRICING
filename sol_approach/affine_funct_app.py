@@ -4,7 +4,7 @@ from gurobipy import GRB
 import random
 from itertools import product
 
-from sol_approach.phi_features import build_phi
+from data.phi_features import build_phi
 
 
 def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
