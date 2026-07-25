@@ -84,7 +84,7 @@ b = 1.6
 #   For deterministic: L = L[i,t]
 #   For stochastic: L = L[i,t,s]
 lb_L = 1
-ub_L = 4
+ub_L = 2
 det = False # False for stochastic lead times (While we tested with deterministic, we mostly focus in stochastic)
 ##############################################
 

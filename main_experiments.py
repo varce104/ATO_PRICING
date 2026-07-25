@@ -41,3 +41,75 @@ run_parameter(base_cfg, "branching", branching_options, apply_branching)
 affine_cfg = copy.deepcopy(base_cfg)
 affine_cfg.run = RunConfig(Model="Affine_eval",)
 run_parameter(affine_cfg, "phi_mode", ["eps", "eps_delta", "eps_lt", "eps_delta_lt"], apply_phi_mode)
+
+
+import pandas as pd
+import itertools
+import time
+
+# 1. Definir los modelos a evaluar
+# Aquí listarías las referencias a tus modelos (ej. multistage, twostage, etc.)
+modelos_a_ejecutar = ['multistage', 'twostage_dlt_slt', 'affine_funct_app']
+
+# 2. Definir los parámetros generales y las instancias a variar
+# Los valores en listas representan las variaciones que quieres probar
+parametros_instancias = {
+    'capacidad_inventario': [100, 200, 500],
+    'tasa_demanda': [10, 15],
+    'costo_penalizacion': [0.5, 1.0]
+}
+
+# 3. Generar todas las combinaciones posibles de parámetros
+nombres_params, valores_params = zip(*parametros_instancias.items())
+combinaciones = [dict(zip(nombres_params, v)) for v in itertools.product(*valores_params)]
+
+def ejecutar_experimentos(modelos, instancias):
+    resultados_totales = []
+    
+    # 4. Bucle anidado: Iterar sobre cada modelo y cada combinación de parámetros
+    for nombre_modelo in modelos:
+        print(f"--- Iniciando corridas para el modelo: {nombre_modelo} ---")
+        
+        for i, instancia in enumerate(instancias):
+            print(f"  Ejecutando instancia {i+1}/{len(instancias)}: {instancia}")
+            
+            inicio = time.time()
+            
+            # ------------------------------------------------------------------
+            # AQUÍ LLAMAS A TU PIPELINE/SOLVER
+            # Ejemplo conceptual:
+            # modelo_obj = instanciar_modelo(nombre_modelo, parametros_generales)
+            # output = modelo_obj.resolver(instancia)
+            # ------------------------------------------------------------------
+            
+            # Simulamos el diccionario de salida que te daría tu solver
+            output_simulado = {
+                'funcion_objetivo': 15420.5, 
+                'gap_optimizacion': 0.01,
+                'estado_solver': 'optimal'
+            }
+            
+            fin = time.time()
+            
+            # 5. Consolidar la información de la corrida
+            registro = {
+                'Modelo': nombre_modelo,
+                **instancia,                  # Desempaqueta los parámetros usados
+                **output_simulado,            # Desempaqueta los resultados del modelo
+                'Tiempo_Ejecucion_Seg': round(fin - inicio, 2)
+            }
+            
+            resultados_totales.append(registro)
+            
+    return resultados_totales
+
+# 6. Ejecutar y exportar
+resultados = ejecutar_experimentos(modelos_a_ejecutar, combinaciones)
+
+# Convertir la lista de diccionarios a un DataFrame y exportar a un único Excel
+df_resultados = pd.DataFrame(resultados)
+
+# Puedes guardar todo en una sola hoja, o usar pd.ExcelWriter para separar por modelo
+nombre_archivo = 'resultados_experimentos.xlsx'
+df_resultados.to_excel(nombre_archivo, index=False)
+print(f"\n¡Todos los experimentos finalizados! Resultados exportados en: {nombre_archivo}")
