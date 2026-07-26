@@ -69,7 +69,7 @@ ub_epsilon = 1.3
 # delta: given by a normal distribution N(mu_delta, std_delta)
 mu_delta = 0
 std_delta = 2
-##############################################
+#############################################
 # PRICE LINEAR EXPRESSION - DEMAND
 # Decreasing linnear expression for the demand. given by: (a - b * w)
 a = 100
@@ -95,25 +95,26 @@ det = False # False for stochastic lead times (While we tested with deterministi
 #   - EVPI: Expected Value of Perfect Information
 #   - VSS_TS: Value of Stochastic Solution based on two stage model
 
-# vss_calc = False
-# evpi_calc = False
-# vss_ts_calc = False   
+vss_calc = False
+evpi_calc = False
+vss_ts_calc = False   
 ##############################################
 
 
 ##############################################
 # EXPERIMENTAL SETTINGS
-# show_var = False   # export solution in an excel file. Can be used for fine analisys of decision behavior.
+show_var = False   # export solution in an excel file. Can be used for fine analisys of decision behavior.
 #=============================================
-# show_heatmap = False   # Save heatmaps to figures for every decision variable
-# show_boxplot = False   # Save boxplot to figures for every decision variable
-# show_candlestick = False   # Save candlestick to figures for every decision variable
+lambda_app = False   # Use lambda approximation to extract affine policy and evaluate in MS_linear with w fixed [OLD]
+show_heatmap = False   # Save heatmaps to figures for every decision variable
+show_boxplot = False   # Save boxplot to figures for every decision variable
+show_candlestick = False   # Save candlestick to figures for every decision variable
 #=============================================
 show_kpis=True   # Calculate and print KPIs for fulfillment, utilization, inventory ratio and weighted average price
 #=============================================
 time_limit = 900 # limit for each iteration
 seed = 5
-iter = 21 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+iter = 11 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
@@ -133,10 +134,8 @@ inst = "None"
 # "Oh_et_al_3" -> 11 x 11 instance based on Oh et al. (2014)
 #=============================================
 
-
-
 from data.config import (ProblemSize, BomConfig, CostConfig, PriceConfig,
-                     DemandConfig, LeadTimeConfig, RunConfig, ExperimentConfig)
+                     DemandConfig, LeadTimeConfig, RunConfig, OutputConfig, ExperimentConfig)
 
 size = ProblemSize(inst, comp, prod, stages,
                     scenarios, branching, seed, time_limit)
@@ -145,6 +144,8 @@ costs = CostConfig(min_cost, max_cost, inv_factor, I0)
 price = PriceConfig(lb_price, ub_price, step_price)
 demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
 lead_times = LeadTimeConfig(lb_L, ub_L, det)
+Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                      vss_calc, evpi_calc, vss_ts_calc)
 
 #=============================================
 # SPECIFIC CONFIGS
@@ -171,14 +172,13 @@ lead_times = LeadTimeConfig(lb_L, ub_L, det)
 
 
 run_configs = [
-    RunConfig(Model="MS_linear", W_cts=True, show_kpis=show_kpis),
-    # RunConfig(Model="MS_linear_affine", W_cts=False, show_fulfillment=True),
-    RunConfig(Model="Relaxed_eval", show_kpis=show_kpis),
-    RunConfig(Model="Affine_eval", show_kpis=show_kpis),
-    RunConfig(Model="Iterative_heuristic", show_kpis=show_kpis)
+    RunConfig(Model="MS_linear", W_cts=True),
+    RunConfig(Model="Relaxed_eval"),
+    RunConfig(Model="Affine_eval"),
+    RunConfig(Model="Iterative_heuristic")
 ]
 
 for run in run_configs:
     current_size = copy.deepcopy(size)
-    cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, iter)
+    cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
     _,_ = instances(cfg)

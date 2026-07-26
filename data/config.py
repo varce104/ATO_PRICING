@@ -47,13 +47,16 @@ class RunConfig:
     Model: str
     W_cts: bool = False
     features: bool = False
+    phi_mode: str = "eps_delta"   # "eps" | "eps_delta" | "eps_lt" | "eps_delta_lt"
+
+@dataclass
+class OutputConfig:
     show_var: bool = False
     lambda_app: bool = False
     show_heatmap: bool = False
     show_boxplot: bool = False
     show_candlestick: bool = False
     show_kpis: bool = False
-    phi_mode: str = "eps_delta"   # "eps" | "eps_delta" | "eps_lt" | "eps_delta_lt"
     vss_calc: bool = False
     evpi_calc: bool = False
     vss_ts_calc: bool = False
@@ -62,4 +65,4 @@ class RunConfig:
 class ExperimentConfig:
     size: ProblemSize; bom: BomConfig; costs: CostConfig
     price: PriceConfig; demand: DemandConfig; lead_times: LeadTimeConfig
-    run: RunConfig; iter: int = 1
+    run: RunConfig; Output: OutputConfig; iter: int = 1

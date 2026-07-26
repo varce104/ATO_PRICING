@@ -16,7 +16,7 @@ def uncertainty_analysis(cfg, incumbent):
     C, H, pi, A, price, mult, add, L, a, b, I0 = extract_params(cfg)
     stages, scenarios, branching, seed = cfg.size.stages, cfg.size.scenarios, cfg.size.branching, cfg.size.seed
     det = cfg.lead_times.det
-    vss_ms, evpi_ms, vss_ts = cfg.run.vss_calc, cfg.run.evpi_calc, cfg.run.vss_ts_calc
+    vss_ms, evpi_ms, vss_ts = cfg.Output.vss_calc, cfg.Output.evpi_calc, cfg.Output.vss_ts_calc
 
     if cfg.size.inst is not None:
         comp = len(A); prod = len(A[0])
