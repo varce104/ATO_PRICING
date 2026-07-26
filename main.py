@@ -95,25 +95,25 @@ det = False # False for stochastic lead times (While we tested with deterministi
 #   - EVPI: Expected Value of Perfect Information
 #   - VSS_TS: Value of Stochastic Solution based on two stage model
 
-vss_calc = False
-evpi_calc = False
-vss_ts_calc = False   
+# vss_calc = False
+# evpi_calc = False
+# vss_ts_calc = False   
 ##############################################
 
 
 ##############################################
 # EXPERIMENTAL SETTINGS
-show_var = False   # export solution in an excel file. Can be used for fine analisys of decision behavior.
+# show_var = False   # export solution in an excel file. Can be used for fine analisys of decision behavior.
 #=============================================
-show_heatmap = False   # Save heatmaps to figures for every decision variable
-show_boxplot = False   # Save boxplot to figures for every decision variable
-show_candlestick = False   # Save candlestick to figures for every decision variable
+# show_heatmap = False   # Save heatmaps to figures for every decision variable
+# show_boxplot = False   # Save boxplot to figures for every decision variable
+# show_candlestick = False   # Save candlestick to figures for every decision variable
 #=============================================
 show_kpis=True   # Calculate and print KPIs for fulfillment, utilization, inventory ratio and weighted average price
 #=============================================
 time_limit = 900 # limit for each iteration
 seed = 5
-iter = 2 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+iter = 21 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
