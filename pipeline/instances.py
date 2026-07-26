@@ -3,21 +3,19 @@ import pandas as pd
 from pipeline.solver import solve
 from output_config.mean_var import average_excel_solutions
 
-MASTER_RESULTS_PATH = "var_results/all_runs.xlsx"
-
-def append_run_results(model_name, results, seeds):
+def append_run_results(model_name, results, seeds, PATH="var_results/all_runs.xlsx"):
     df_new = pd.DataFrame(results)
     df_new.insert(0, "seed", seeds)
     df_new.insert(0, "Model", model_name)
 
-    if os.path.exists(MASTER_RESULTS_PATH):
-        df_old = pd.read_excel(MASTER_RESULTS_PATH)
+    if os.path.exists(PATH):
+        df_old = pd.read_excel(PATH)
         df_all = pd.concat([df_old, df_new], ignore_index=True)
     else:
         df_all = df_new
 
-    df_all.to_excel(MASTER_RESULTS_PATH, index=False)
-    print(f"\n>> Resultados acumulados en: {MASTER_RESULTS_PATH} ({len(df_all)} corridas totales)\n")
+    df_all.to_excel(PATH, index=False)
+    print(f"\n>> Resultados acumulados en: {PATH} ({len(df_all)} corridas totales)\n")
     return df_all
 
 
@@ -33,7 +31,7 @@ def instances(cfg):
 
     append_run_results(cfg.run.Model, results, seeds)
 
-    if cfg.run.show_var:
+    if cfg.Output.show_var:
         average_excel_solutions(files, output_path="var_results/mean_var_by_inst/avg_sol.xlsx")
 
     return results, seeds

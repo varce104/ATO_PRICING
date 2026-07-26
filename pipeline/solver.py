@@ -32,12 +32,13 @@ def solve(cfg):
 
     Model = cfg.run.Model
     W_cts = cfg.run.W_cts
-    show_var = cfg.run.show_var
-    lambda_app = cfg.run.lambda_app
-    show_heatmap = cfg.run.show_heatmap
-    show_boxplot = cfg.run.show_boxplot
-    show_candlestick = cfg.run.show_candlestick
-    show_kpis = cfg.run.show_kpis
+
+    show_var = cfg.Output.show_var
+    lambda_app = cfg.Output.lambda_app
+    show_heatmap = cfg.Output.show_heatmap
+    show_boxplot = cfg.Output.show_boxplot
+    show_candlestick = cfg.Output.show_candlestick
+    show_kpis = cfg.Output.show_kpis
     
     if inst is not None:
         comp = len(A); prod = len(A[0])
