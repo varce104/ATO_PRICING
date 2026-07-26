@@ -108,20 +108,30 @@ def Multistage_problem(seed, time, scenarios, A, price, L, L_det, ypsilon, delta
     return m, x, w, y, I, A, D_term
 
 
+# structure = branching_structure + [1]*(time - len(branching_structure)) 
+# n_groups = 1 
+# for t, branch_factor in enumerate(structure):
+#     if t >= time: 
+#         break
+        
+#     # 1. Decisiones Here-and-Now (x, w) ligadas a F_{t-1}
+#     scenarios_per_group_xw = int(scenarios / n_groups)
+#     for g in range(n_groups):
+#         first = g * scenarios_per_group_xw 
+#         for k in range(1, scenarios_per_group_xw):
+#             s = first + k
+#             m.addConstrs((x[i, t, s] == x[i, t, first] for i in range(comp)), name=f"NAC_x_t{t}_g{g}")
+#             for j in range(prod):
+#                  m.addConstrs((w[j, t, p, s] == w[j, t, p, first] for p in range(pr)), name=f"NAC_w_t{t}_g{g}") 
+    
+#     # 2. Revelación de incertidumbre: Actualizamos n_groups para que represente F_t
+#     n_groups = n_groups * branch_factor 
 
-
-# if I0 is not None:
-#         m.addConstrs(
-#         (gp.quicksum(y[j, tt, s] * A[i][j] for j in range(prod) for tt in range(1,t+1)) + I[i, t, s] == gp.quicksum(alpha[i, tau, t] * x[i, tau, s] for tau in range(time)))
-#         for i in range(comp) for t in range(1,time) for s in range(scenarios))
-
-#         m.addConstrs((I[i,0,s] == I0[i] - gp.quicksum(y[j, 0, s] * A[i][j] for j in range(prod))) for i in range(comp) for s in range(scenarios))
-
-#     else:
-#         m.addConstrs(
-#         (gp.quicksum(y[j, tt, s] * A[i][j] for j in range(prod) for tt in range(t + 1)) + I[i, t, s] ==
-#         gp.quicksum(alpha[i, tau, t] * x[i, tau, s] for tau in range(time)))
-#         for i in range(comp) for t in range(time) for s in range(scenarios))
-
-#         # restricción de inventario inicial
-#         m.addConstrs(I[i,0,s] == 0 for i in range(comp) for s in range(scenarios))
+#     # 3. Decisiones Wait-and-See (y) ligadas a F_t
+#     scenarios_per_group_y = int(scenarios / n_groups)
+#     for g in range(n_groups):
+#         first = g * scenarios_per_group_y
+#         for k in range(1, scenarios_per_group_y):
+#             s = first + k
+#             for j in range(prod):
+#                  m.addConstr(y[j, t, s] == y[j, t, first], name=f"NAC_y_t{t}_g{g}")

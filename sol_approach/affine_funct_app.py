@@ -9,15 +9,11 @@ from data.phi_features import build_phi
 
 def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
                       branching_structure, I0=None, phi_init=None, K_feat=None, lambda_fix=False,phi_mode="eps_delta"):
-    
     random.seed(seed)
     comp, prod = len(A), len(A[0])
     pr = len(price)
-
     m = gp.Model("Affine rule model")
-
 #=========================================================================
-
     if phi_init is not None:
         phi = phi_init
         if K_feat is None:
@@ -25,14 +21,11 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
         K_features = K_feat
     else:
         phi, K_features = build_phi(phi_mode, time, scenarios, prod, comp, ypsilon, delta, L, L_det)
-
 #=========================================================================
-    
     I = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, name="I", lb=0)
     x = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, name="x", lb=0)
     y = m.addVars(prod, time, scenarios, vtype=GRB.CONTINUOUS, name="y", lb=0)
     y_bar = m.addVars(prod, time, pr, scenarios, vtype=GRB.CONTINUOUS, name="y_bar", lb=0)
-
     lambda_w = m.addVars(prod, time, pr, scenarios, vtype=GRB.CONTINUOUS, name="lambda_w", lb=0) 
 
     D_term = {}
@@ -94,21 +87,30 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
             gp.quicksum(alpha[i, tau, t, s] * x[i, tau, s] for tau in range(time)))
             for i in range(comp) for t in range(time) for s in range(scenarios))
 
-    structure = branching_structure + [1]*(time - len(branching_structure))
+#=========================================================================
+    structure = branching_structure + [1]*(time - len(branching_structure)) 
     n_groups = 1 
     for t, branch_factor in enumerate(structure):
         if t >= time: 
             break
-        scenarios_per_group = int(scenarios / n_groups)
+        # 1. Decisiones Here-and-Now (x, w) ligadas a F_{t-1}
+        scenarios_per_group_xw = int(scenarios / n_groups)
         for g in range(n_groups):
-            first = g * scenarios_per_group 
-            for k in range(1, scenarios_per_group):
+            first = g * scenarios_per_group_xw 
+            for k in range(1, scenarios_per_group_xw):
                 s = first + k
                 m.addConstrs((x[i, t, s] == x[i, t, first] for i in range(comp)), name=f"NAC_x_t{t}_g{g}")
+        # 2. Revelación de incertidumbre: Actualizamos n_groups para que represente F_t
+        n_groups = n_groups * branch_factor 
+        # 3. Decisiones Wait-and-See (y) ligadas a F_t
+        scenarios_per_group_y = int(scenarios / n_groups)
+        for g in range(n_groups):
+            first = g * scenarios_per_group_y
+            for k in range(1, scenarios_per_group_y):
+                s = first + k
                 for j in range(prod):
                     m.addConstr(y[j, t, s] == y[j, t, first], name=f"NAC_y_t{t}_g{g}")
-        n_groups = n_groups * branch_factor 
-
+#=========================================================================
     if lambda_fix == False: # Cuando se fija lambda, se trabaja como parámetro -> rho y Gamma no son necesarios (incluyendo restricciones asociadas)
 
         rho = m.addVars(prod, time, pr, vtype=GRB.CONTINUOUS, lb = -GRB.INFINITY, name="rho")
@@ -126,7 +128,21 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
         return m, x, lambda_w, y, y_bar, I, A, D_term, rho, Gamma, K_features
     else:       
         return m, x, lambda_w, y, y_bar, I, A, D_term, None, None, K_features
-    
+
+    structure = branching_structure + [1]*(time - len(branching_structure))
+    n_groups = 1 
+    for t, branch_factor in enumerate(structure):
+        if t >= time: 
+            break
+        scenarios_per_group = int(scenarios / n_groups)
+        for g in range(n_groups):
+            first = g * scenarios_per_group 
+            for k in range(1, scenarios_per_group):
+                s = first + k
+                m.addConstrs((x[i, t, s] == x[i, t, first] for i in range(comp)), name=f"NAC_x_t{t}_g{g}")
+                for j in range(prod):
+                    m.addConstr(y[j, t, s] == y[j, t, first], name=f"NAC_y_t{t}_g{g}")
+        n_groups = n_groups * branch_factor 
 
 
 def MS_affine_cts(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, 
