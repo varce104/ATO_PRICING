@@ -95,7 +95,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     solve_time = time.time() - t0
 
     if m_af.status != GRB.OPTIMAL:
-        return None, None, None, None
+        return None, None, None, None, None, None, None, None, None
 
     # Extraer I e y de MS_linear_affine
     I_fixed = {(i, t, s): I_af[i, t, s].X for i, t, s in product(range(comp), range(stages), range(scenarios))} # Inventory
@@ -136,7 +136,7 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
 
         if m_inv.status != GRB.OPTIMAL:
             print("\nMS_linear_affine unfeasible.\n")
-            return None, None, None, None
+            return None, None, None, None, None, None, None, None, None
 
         obj_lin = m_inv.objVal
         print(f"\n >>> MS_linear_affine (ATO problem): {obj_lin:.2f} <<< \n")

@@ -18,7 +18,7 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
     
     m_af.setParam('OutputFlag', 1)
     m_af.setParam('BarHomogeneous', 1)
-
+    m_af.setParam('TimeLimit', 500)
     m_af.optimize()
     solve_time = m_af.Runtime
 
@@ -57,7 +57,7 @@ def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
         ypsilon, delta, a, b, C, H, pi, branching, I0, w_cts=True)
     m_cts.setParam('OutputFlag', 0)
     m_cts.Params.NonConvex = 2
-
+    m_cts.setParam('TimeLimit', 500)
     m_cts.optimize()
     solve_time = m_cts.Runtime
 
