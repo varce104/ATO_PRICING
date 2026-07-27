@@ -181,84 +181,84 @@ run_configs = [
 ]
 # ==============================================================================
 # COMPONENTS SWEEP
-# comps = [4,5,6,7,8,9,10]
+comps = [4,5,6,7,8,9,10]
 
-# for val in comps: 
+for val in comps: 
 
-#     comp = val
+    comp = val
 
-#     size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
-#     bom = BomConfig(min_use, max_use, other)
-#     costs = CostConfig(min_cost, max_cost, inv_factor, I0)
-#     price = PriceConfig(lb_price, ub_price, step_price)
-#     demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
-#     lead_times = LeadTimeConfig(lb_L, ub_L, det)
-#     Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
-#                           vss_calc, evpi_calc, vss_ts_calc)
+    size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+    bom = BomConfig(min_use, max_use, other)
+    costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+    price = PriceConfig(lb_price, ub_price, step_price)
+    demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
+    lead_times = LeadTimeConfig(lb_L, ub_L, det)
+    Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                          vss_calc, evpi_calc, vss_ts_calc)
 
-#     for run in run_configs:
-#         current_size = copy.deepcopy(size)
-#         cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+    for run in run_configs:
+        current_size = copy.deepcopy(size)
+        cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
         
-#         _,_ = instances(cfg, tag="comp", param_name="comp", param_value=val)
+        _,_ = instances(cfg, tag="comp", param_name="comp", param_value=val)
 
-# comp = 5 # reset base value
+comp = 5 # reset base value
 # ==============================================================================
 # PRODUCTS SWEEP
-# prod = [3,4,5,6,7,8,9]
+prod = [3,4,5,6,7,8,9]
 
-# for val in prod:    
+for val in prod:    
 
-#     prod = val
+    prod = val
 
-#     size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
-#     bom = BomConfig(min_use, max_use, other)
-#     costs = CostConfig(min_cost, max_cost, inv_factor, I0)
-#     price = PriceConfig(lb_price, ub_price, step_price)
-#     demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
-#     lead_times = LeadTimeConfig(lb_L, ub_L, det)
-#     Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
-#                           vss_calc, evpi_calc, vss_ts_calc)
+    size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+    bom = BomConfig(min_use, max_use, other)
+    costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+    price = PriceConfig(lb_price, ub_price, step_price)
+    demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
+    lead_times = LeadTimeConfig(lb_L, ub_L, det)
+    Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                          vss_calc, evpi_calc, vss_ts_calc)
 
-#     for run in run_configs:
-#         current_size = copy.deepcopy(size)
-#         cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+    for run in run_configs:
+        current_size = copy.deepcopy(size)
+        cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
         
-#         _,_ = instances(cfg, tag="prod", param_name="prod", param_value=val)
+        _,_ = instances(cfg, tag="prod", param_name="prod", param_value=val)
 
 prod = 4 # reset base value
 # ==============================================================================
 # BRANCHING SWEEP
-# branching = [
-#             [5,5,5,2,1,1,1],
-#             [10,5,2,2,1,1,1],
-#             [20,5,2,1,1,1,1],
-#             [50,2,2,1,1,1,1],
-#             [125,2,1,1,1,1,1],
-#             ]
-# i=0
-# for val in branching:    
+branching = [
+            [5,5,5,2,1,1,1],
+            [10,5,2,2,1,1,1],
+            [20,5,2,1,1,1,1],
+            [50,2,2,1,1,1,1],
+            [125,2,1,1,1,1,1],
+            ]
+i=0
+for val in branching:    
 
-#     branching = val
-#     scenarios = math.prod(branching)   # 128 scenarios
-#     i+=1
-#     size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
-#     bom = BomConfig(min_use, max_use, other)
-#     costs = CostConfig(min_cost, max_cost, inv_factor, I0)
-#     price = PriceConfig(lb_price, ub_price, step_price)
-#     demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
-#     lead_times = LeadTimeConfig(lb_L, ub_L, det)
-#     Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
-#                           vss_calc, evpi_calc, vss_ts_calc)
+    branching = val
+    scenarios = math.prod(branching)   # 128 scenarios
+    i+=1
+    size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+    bom = BomConfig(min_use, max_use, other)
+    costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+    price = PriceConfig(lb_price, ub_price, step_price)
+    demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
+    lead_times = LeadTimeConfig(lb_L, ub_L, det)
+    Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                          vss_calc, evpi_calc, vss_ts_calc)
 
-#     for run in run_configs:
-#         current_size = copy.deepcopy(size)
-#         cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+    for run in run_configs:
+        current_size = copy.deepcopy(size)
+        cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
         
-#         _,_ = instances(cfg, tag="branching", param_name="branching", param_value=i)
+        _,_ = instances(cfg, tag="branching", param_name="branching", param_value=i)
 
-# branching = [2,2,2,2,2,2,2] # reset base value
-# scenarios = math.prod(branching)   # 128 scenarios
+branching = [2,2,2,2,2,2,2] # reset base value
+scenarios = math.prod(branching)   # 128 scenarios
 # ==============================================================================
 # LEAD TIMES SWEEP
 run_configs = [
