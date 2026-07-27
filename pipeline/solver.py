@@ -109,7 +109,18 @@ def solve(cfg):
         print("\nWrong input, try again...")
         return None
 #=====================================================================================================================================
-
+    if m is None: # if a model is unfeasible
+        print(f"\n{Model} unfeasible. Returning NaN values\n")
+        return {
+            "incumbent": None,
+            "bestbd": None,
+            "gap": None,
+            "time": None,
+            "iterations (IH)": None,
+            "vss": None,
+            "evpi": None,
+            "vss_ts": None
+        }
 #=====================================================================================================================================
 #   Gurobi Parameters:
     m.setParam('TimeLimit', time_limit)

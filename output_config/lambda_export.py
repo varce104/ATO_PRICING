@@ -15,7 +15,6 @@ def extract_solution_arrays_affine_w(lambda_vars, prod, time, scenarios, pr, Mod
                 w_simulada[j, t, best_p, s] = 1
     return w_simulada
 
-
 def export_solution_to_excel_affine(filename, w_sim, time, scenarios, pr, A, Model):
     comp, prod = len(A), len(A[0])
 
@@ -45,9 +44,6 @@ def export_solution_to_excel_affine(filename, w_sim, time, scenarios, pr, A, Mod
     except Exception as e:
         print(f"Error al exportar Excel: {e}")
 
-
-
-
 def fix_w_from_lambda(m, w_vars, w_rec, prod, time, pr, scenarios, epsilon=0.05):
     for j in range(prod):
         for t in range(time):
@@ -76,7 +72,6 @@ def fix_w_from_lambda(m, w_vars, w_rec, prod, time, pr, scenarios, epsilon=0.05)
                     # w_vars[j, t, p, s].UB = val
                     
     return w_rec
-
 
 def export_affine_params_to_excel(filename, rho_vars, Gamma_vars, prod, time, pr, K_features):
 
