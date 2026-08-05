@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 from itertools import product
@@ -9,7 +10,6 @@ def get_values(var_dict, shape):
     for index in var_dict.keys():
         vals[index] = var_dict[index].X  
     return vals
-
 
 def extract_solution_arrays(x_vars, w_vars, I_vals, y_vals, D_term, price, comp, prod, time, scenarios, pr):
     x_val = np.zeros((comp, time, scenarios))
@@ -31,7 +31,6 @@ def extract_solution_arrays(x_vars, w_vars, I_vals, y_vals, D_term, price, comp,
 
 
     return x_val, price_eff, I_vals, y_vals
-
 
 
 def export_solution_to_excel(filename, x_val, p_eff, y_val, I_val, d_val, time, scenarios, A):
@@ -82,3 +81,44 @@ def export_solution_to_excel(filename, x_val, p_eff, y_val, I_val, d_val, time, 
         print(f"\n>> Resultados exportados a: {filename}")
     except Exception as e:
         print(f"Error al exportar Excel: {e}")
+
+
+def export_long_format_csv(filename, Model, seed, x_val, p_eff, y_val, I_val, d_val, time, scenarios, A):
+    """
+    Exporta las medias de las decisiones en formato largo (Tidy Data) 
+    para facilitar la graficación comparativa entre modelos.
+    """
+    comp, prod = len(A), len(A[0])
+    rows = []
+    
+    # Promediar sobre los escenarios (axis=2)
+    x_mean = np.mean(x_val, axis=2)
+    w_mean = np.mean(p_eff, axis=2)
+    y_mean = np.mean(y_val, axis=2)
+    I_mean = np.mean(I_val, axis=2)
+    d_mean = np.mean(d_val, axis=2)
+    
+    # Extraer datos de Componentes (x, I)
+    for t in range(time):
+        for i in range(comp):
+            rows.append({"Model": Model, "Seed": seed, "Period": t+1, "Variable": "x", "Item": f"C{i+1}", "Mean_Value": x_mean[i, t]})
+            rows.append({"Model": Model, "Seed": seed, "Period": t+1, "Variable": "I", "Item": f"C{i+1}", "Mean_Value": I_mean[i, t]})
+            
+    # Extraer datos de Productos (w, y, d)
+    for t in range(time):
+        for j in range(prod):
+            rows.append({"Model": Model, "Seed": seed, "Period": t+1, "Variable": "w", "Item": f"P{j+1}", "Mean_Value": w_mean[j, t]})
+            rows.append({"Model": Model, "Seed": seed, "Period": t+1, "Variable": "y", "Item": f"P{j+1}", "Mean_Value": y_mean[j, t]})
+            rows.append({"Model": Model, "Seed": seed, "Period": t+1, "Variable": "D", "Item": f"P{j+1}", "Mean_Value": d_mean[j, t]})
+            
+    df_new = pd.DataFrame(rows)
+    
+    # Lógica de concatenación: si el archivo ya existe, agrega los nuevos datos debajo
+    if os.path.exists(filename):
+        df_old = pd.read_csv(filename)
+        df_all = pd.concat([df_old, df_new], ignore_index=True)
+    else:
+        df_all = df_new
+        
+    df_all.to_csv(filename, index=False)
+    print(f"\n>> Resultados para gráficos exportados en formato largo a: {filename}")

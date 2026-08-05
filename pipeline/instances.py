@@ -68,7 +68,7 @@ def instances(cfg, tag=None, param_name=None, param_value=None):
     # El tag enruta el archivo a su propio Excel, separando por experimentos.
     out_path = f"var_results/{tag}_res.xlsx" if tag else "var_results/all_runs.xlsx"
     append_run_results(cfg.run.Model, results, seeds, PATH=out_path, param_name=param_name, param_value=param_value)
-    if cfg.Output.show_var:
-        average_excel_solutions(files, output_path="var_results/mean_var_by_inst/avg_sol.xlsx")
+    # if cfg.Output.show_var:
+    #     average_excel_solutions(files, output_path="var_results/mean_var_by_inst/avg_sol.xlsx")
 
     return results, seeds
