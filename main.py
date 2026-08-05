@@ -11,17 +11,10 @@ import copy
 
 ##############################################
 # GENERAL SIZE #
-comp = 5 # 3X, 4, 5, 6, 7X
-prod = 4 # 2X, 3, 4, 5, 6X
+comp = 2 
+prod = 2
 stages = 8                     
 branching = [2,2,2,2,2,2,2]   # Binary tree
-
-# [5,5,5,2,1,1,1]
-# [10,5,2,2,1,1,1]
-# [20,5,2,1,1,1,1]
-# [50,2,2,1,1,1,1]
-# [125,2,1,1,1,1,1]
-
 scenarios = math.prod(branching)   # 128 scenarios
 ##############################################
 
@@ -102,19 +95,19 @@ vss_ts_calc = False
 
 
 ##############################################
-# EXPERIMENTAL SETTINGS
-show_var = False   # export solution in an excel file. Can be used for fine analisys of decision behavior.
+# EXPERIMENTAL SETTINGS (True / False)
+show_var = True   # export solution in an excel file. Can be used for fine analisys of decision behavior.
 #=============================================
 lambda_app = False   # Use lambda approximation to extract affine policy and evaluate in MS_linear with w fixed [OLD]
-show_heatmap = False   # Save heatmaps to figures for every decision variable
+show_heatmap = True   # Save heatmaps to figures for every decision variable
 show_boxplot = False   # Save boxplot to figures for every decision variable
-show_candlestick = False   # Save candlestick to figures for every decision variable
+show_candlestick = True   # Save candlestick to figures for every decision variable
 #=============================================
-show_kpis=True   # Calculate and print KPIs for fulfillment, utilization, inventory ratio and weighted average price
+show_kpis = True   # Calculate and print KPIs for fulfillment, utilization, inventory ratio and weighted average price
 #=============================================
 time_limit = 900 # limit for each iteration
 seed = 5
-iter = 11 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+iter = 1 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
@@ -137,15 +130,14 @@ inst = "None"
 from data.config import (ProblemSize, BomConfig, CostConfig, PriceConfig,
                      DemandConfig, LeadTimeConfig, RunConfig, OutputConfig, ExperimentConfig)
 
-size = ProblemSize(inst, comp, prod, stages,
-                    scenarios, branching, seed, time_limit)
+size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
 bom = BomConfig(min_use, max_use, other)
 costs = CostConfig(min_cost, max_cost, inv_factor, I0)
 price = PriceConfig(lb_price, ub_price, step_price)
 demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
 lead_times = LeadTimeConfig(lb_L, ub_L, det)
 Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
-                      vss_calc, evpi_calc, vss_ts_calc)
+                    vss_calc, evpi_calc, vss_ts_calc)
 
 #=============================================
 # SPECIFIC CONFIGS
@@ -159,10 +151,10 @@ Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_can
 #============================================
 #   "MS_linear_affine" -> multistage with linealized revenue AND affine pricing policy.
 #============================================
-#   "Affine_eval" -> Solves MS_linear_affine, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
-#   "Relaxed_eval" -> Solve relaxed MS_linear, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
+#   "AF_EVAL" -> Solves MS_linear_affine, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
+#   "REL_EVAL" -> Solve relaxed MS_linear, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
 #============================================
-#   "Iterative_heuristic" -> iterative heuristic: iterates between solving pricing problem and inventory problem (features vector contains inventory levels from inventory problem)
+#   "IH" -> iterative heuristic: iterates between solving pricing problem and inventory problem (features vector contains inventory levels from inventory problem)
 #============================================
 # Others:
 #   "TS_linear" -> Two stage version of MS_linear model.
@@ -171,62 +163,97 @@ Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_can
 #============================================
 
 # ==============================================================================
+# Ejecuciones (switch True / False)
+#============================================
+single = True # True for single instance
+comp_sweep = False
+prod_sweep = False
+branching_sweep = False
+lead_time_sweep = False
+dem_sweep = False
+#============================================
+
+
+# ==============================================================================
+# EJECUCIÓN INDIVIDUAL DE MODELOS
+# ==============================================================================
+if single:
+    run_configs = [
+        # RunConfig(Model="MS_linear", W_cts=True),
+        # RunConfig(Model="MS_linear_affine", W_cts=False),
+        RunConfig(Model="AF_EVAL"),
+        RunConfig(Model="REL_EVAL"),
+        RunConfig(Model="IH"),
+    ]
+
+    for run in run_configs:
+        current_size = copy.deepcopy(size)
+        cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+        instances(cfg)
+# ==============================================================================
+
+
+# ==============================================================================
 # BARRIDO PARAMÉTRICO (SENSITIVITY ANALYSIS SWEEP)
 # ==============================================================================
 run_configs = [
     RunConfig(Model="MS_linear", W_cts=True),
-    RunConfig(Model="Relaxed_eval"),
-    RunConfig(Model="Affine_eval"),
-    RunConfig(Model="Iterative_heuristic")
+    RunConfig(Model="AF_EVAL"),
+    RunConfig(Model="REL_EVAL"),
+    RunConfig(Model="IH"),
 ]
 # ==============================================================================
 # COMPONENTS SWEEP
+# ==============================================================================
 comps = [4,5,6,7,8,9,10]
+if comp_sweep:
+    for val in comps: 
 
-for val in comps: 
+        comp = val
 
-    comp = val
+        size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+        bom = BomConfig(min_use, max_use, other)
+        costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+        price = PriceConfig(lb_price, ub_price, step_price)
+        demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
+        lead_times = LeadTimeConfig(lb_L, ub_L, det)
+        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                            vss_calc, evpi_calc, vss_ts_calc)
 
-    size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
-    bom = BomConfig(min_use, max_use, other)
-    costs = CostConfig(min_cost, max_cost, inv_factor, I0)
-    price = PriceConfig(lb_price, ub_price, step_price)
-    demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
-    lead_times = LeadTimeConfig(lb_L, ub_L, det)
-    Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
-                          vss_calc, evpi_calc, vss_ts_calc)
+        for run in run_configs:
+            current_size = copy.deepcopy(size)
+            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+            
+            _,_ = instances(cfg, tag="comp", param_name="comp", param_value=val)
 
-    for run in run_configs:
-        current_size = copy.deepcopy(size)
-        cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
-        
-        _,_ = instances(cfg, tag="comp", param_name="comp", param_value=val)
+    comp = 5 # reset base value
 
-comp = 5 # reset base value
 # ==============================================================================
 # PRODUCTS SWEEP
+# ==============================================================================
 prod = [3,4,5,6,7,8,9]
+if prod_sweep:
+    for val in prod:    
 
-for val in prod:    
+        prod = val
 
-    prod = val
+        size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+        bom = BomConfig(min_use, max_use, other)
+        costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+        price = PriceConfig(lb_price, ub_price, step_price)
+        demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
+        lead_times = LeadTimeConfig(lb_L, ub_L, det)
+        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                            vss_calc, evpi_calc, vss_ts_calc)
 
-    size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
-    bom = BomConfig(min_use, max_use, other)
-    costs = CostConfig(min_cost, max_cost, inv_factor, I0)
-    price = PriceConfig(lb_price, ub_price, step_price)
-    demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
-    lead_times = LeadTimeConfig(lb_L, ub_L, det)
-    Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
-                          vss_calc, evpi_calc, vss_ts_calc)
+        for run in run_configs:
+            current_size = copy.deepcopy(size)
+            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+            
+            _,_ = instances(cfg, tag="prod", param_name="prod", param_value=val)
 
-    for run in run_configs:
-        current_size = copy.deepcopy(size)
-        cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
-        
-        _,_ = instances(cfg, tag="prod", param_name="prod", param_value=val)
+    prod = 4 # reset base value
 
-prod = 4 # reset base value
 # ==============================================================================
 # BRANCHING SWEEP
 branching = [
@@ -236,78 +263,85 @@ branching = [
             [50,2,2,1,1,1,1],
             [125,2,1,1,1,1,1],
             ]
-i=0
-for val in branching:    
+# ==============================================================================
+if branching_sweep:
+    i=0
+    for val in branching:    
 
-    branching = val
+        branching = val
+        scenarios = math.prod(branching)   # 128 scenarios
+        i+=1
+        size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+        bom = BomConfig(min_use, max_use, other)
+        costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+        price = PriceConfig(lb_price, ub_price, step_price)
+        demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
+        lead_times = LeadTimeConfig(lb_L, ub_L, det)
+        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                            vss_calc, evpi_calc, vss_ts_calc)
+
+        for run in run_configs:
+            current_size = copy.deepcopy(size)
+            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+            
+            _,_ = instances(cfg, tag="branching", param_name="branching", param_value=i)
+
+    branching = [2,2,2,2,2,2,2] # reset base value
     scenarios = math.prod(branching)   # 128 scenarios
-    i+=1
-    size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
-    bom = BomConfig(min_use, max_use, other)
-    costs = CostConfig(min_cost, max_cost, inv_factor, I0)
-    price = PriceConfig(lb_price, ub_price, step_price)
-    demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
-    lead_times = LeadTimeConfig(lb_L, ub_L, det)
-    Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
-                          vss_calc, evpi_calc, vss_ts_calc)
 
-    for run in run_configs:
-        current_size = copy.deepcopy(size)
-        cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
-        
-        _,_ = instances(cfg, tag="branching", param_name="branching", param_value=i)
-
-branching = [2,2,2,2,2,2,2] # reset base value
-scenarios = math.prod(branching)   # 128 scenarios
 # ==============================================================================
 # LEAD TIMES SWEEP
+# ==============================================================================
 run_configs = [
     RunConfig(Model="MS_linear", W_cts=True),
-    RunConfig(Model="Relaxed_eval"),
-    RunConfig(Model="Affine_eval", phi_mode="eps"),
-    RunConfig(Model="Affine_eval", phi_mode="eps_delta"),
-    RunConfig(Model="Affine_eval", phi_mode="eps_lt"),
-    RunConfig(Model="Affine_eval", phi_mode="eps_delta_lt"),
+    RunConfig(Model="REL_EVAL"),
+    RunConfig(Model="AF_EVAL", phi_mode="eps"),
+    RunConfig(Model="AF_EVAL", phi_mode="eps_delta"),
+    RunConfig(Model="AF_EVAL", phi_mode="eps_lt"),
+    RunConfig(Model="AF_EVAL", phi_mode="eps_delta_lt"),
 ]
 
 lead_times = [2,3,4,5]
-for val in lead_times:    
+if lead_time_sweep:
+    for val in lead_times:    
 
-    ub_L = val
+        ub_L = val
 
-    size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
-    bom = BomConfig(min_use, max_use, other)
-    costs = CostConfig(min_cost, max_cost, inv_factor, I0)
-    price = PriceConfig(lb_price, ub_price, step_price)
-    demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
-    lead_times = LeadTimeConfig(lb_L, ub_L, det)
-    Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
-                          vss_calc, evpi_calc, vss_ts_calc)
+        size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+        bom = BomConfig(min_use, max_use, other)
+        costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+        price = PriceConfig(lb_price, ub_price, step_price)
+        demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
+        lead_times = LeadTimeConfig(lb_L, ub_L, det)
+        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                            vss_calc, evpi_calc, vss_ts_calc)
 
-    for run in run_configs:
-        current_size = copy.deepcopy(size)
-        cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
-        
-        _,_ = instances(cfg, tag="lead_times", param_name="lead_times", param_value=val)
+        for run in run_configs:
+            current_size = copy.deepcopy(size)
+            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+            
+            _,_ = instances(cfg, tag="lead_times", param_name="lead_times", param_value=val)
 
-ub_L = 2 # reset base value
+    ub_L = 2 # reset base value
+
 # ==============================================================================
 # DEMAND SHOCK SWEEP
+# ==============================================================================
 dem_var = [0.15,0.3,0.45,0.6]
+if dem_sweep:
+    for val in dem_var:    
 
-for val in dem_var:    
+        size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+        bom = BomConfig(min_use, max_use, other)
+        costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+        price = PriceConfig(lb_price, ub_price, step_price)
+        demand = DemandConfig(a, b, 1-val, 1+val, mu_delta, std_delta)
+        lead_times = LeadTimeConfig(lb_L, ub_L, det)
+        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                            vss_calc, evpi_calc, vss_ts_calc)
 
-    size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
-    bom = BomConfig(min_use, max_use, other)
-    costs = CostConfig(min_cost, max_cost, inv_factor, I0)
-    price = PriceConfig(lb_price, ub_price, step_price)
-    demand = DemandConfig(a, b, 1-val, 1+val, mu_delta, std_delta)
-    lead_times = LeadTimeConfig(lb_L, ub_L, det)
-    Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
-                          vss_calc, evpi_calc, vss_ts_calc)
-
-    for run in run_configs:
-        current_size = copy.deepcopy(size)
-        cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
-        
-        _,_ = instances(cfg, tag="demand", param_name="demand", param_value=val)
+        for run in run_configs:
+            current_size = copy.deepcopy(size)
+            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+            
+            _,_ = instances(cfg, tag="demand", param_name="demand", param_value=val)

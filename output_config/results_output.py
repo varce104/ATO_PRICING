@@ -1,11 +1,11 @@
-from output_config.var_export import export_solution_to_excel, extract_solution_arrays
+from output_config.var_export import export_solution_to_excel, extract_solution_arrays, export_long_format_csv
 
 from output_config.graphs.heatmap import plot_instance_decisions
 from output_config.graphs.boxplot import plot_boxplot
-from output_config.graphs.candlestick import plot_candlestick, plot_fulfillment_candlestick
+from output_config.graphs.candlestick import plot_candlestick_decisions
 
 from output_config.lambda_export import export_solution_to_excel_affine, export_affine_params_to_excel
-from output_config.fulfillment import demand_fulfillment
+from output_config.fulfillment import demand_fulfillment, reconstruct_demand
 from output_config.kpi_performance import calculate_global_kpis
 import numpy as np
 
@@ -24,26 +24,31 @@ def export(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, so
     if need_extraction:
         x_val, price_eff, I_val, y_val = extract_solution_arrays(
             x_vars, w_vars, I_vars, y_vars, D_term, price, len(A), len(A[0]), time, scenarios, pr=len(price))
+        D_val = reconstruct_demand(price_eff, mult, add, a, b)   # <-- reemplaza a D_term en gráficos
 
     if show_sol:
-        if det:
-            export_solution_to_excel(f"var_results/MS_DL_inst{seed}.xlsx", x_val, price_eff, y_val, I_val, D_term, time, scenarios, A)
-        else:
-            export_solution_to_excel(f"var_results/MS_SL_inst{seed}.xlsx", x_val, price_eff, y_val, I_val, D_term, time, scenarios, A)
+        # Mantiene tu exportación original (para lectura manual)
+        # if det:
+        #     export_solution_to_excel(f"var_results/MS_DL_inst{seed}.xlsx", x_val, price_eff, y_val, I_val, D_val, time, scenarios, A)
+        # else:
+        #     export_solution_to_excel(f"var_results/MS_SL_inst{seed}.xlsx", x_val, price_eff, y_val, I_val, D_val, time, scenarios, A)
+        # NUEVO: Genera el dataset consolidado para comparar modelos
+        export_long_format_csv(filename="var_results/concat_sol.csv",Model=Model,seed=seed,x_val=x_val,p_eff=price_eff,y_val=y_val,
+            I_val=I_val,d_val=D_val,time=time,scenarios=scenarios,A=A)
 
     if show_heatmap:
         x_avg = np.mean(x_val, axis=2)
         p_avg = np.mean(price_eff, axis=2)
         I_avg = np.mean(I_val, axis=2)
         y_avg = np.mean(y_val, axis=2)
-        d_avg = np.mean(D_term, axis=2)
-        plot_instance_decisions(x_avg, p_avg, I_avg, y_avg, d_avg)
+        d_avg = np.mean(D_val, axis=2)
+        plot_instance_decisions(x_avg, p_avg, I_avg, y_avg, d_avg, Model, seed)
 
     if show_boxplot:
-        plot_boxplot(x_val, price_eff, I_val, y_val, D_term)
+        plot_boxplot(x_val, price_eff, I_val, y_val, D_val)
 
     if show_candlestick:
-        plot_candlestick(x_val, price_eff, I_val, y_val, D_term)
+        plot_candlestick_decisions(x_val, price_eff, I_val, y_val, D_val, Model, seed)
 
     if show_kpis:
         # Llamada directa pasando los arrays Numpy y parámetros desempaquetados de 'solutions'

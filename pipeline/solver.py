@@ -88,18 +88,18 @@ def solve(cfg):
             phi_mode=cfg.run.phi_mode)
 
 
-    elif Model == "Affine_eval":
+    elif Model == "AF_EVAL":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Affine_eval(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
             phi_mode=cfg.run.phi_mode)
 
-    elif Model == "Relaxed_eval":
+    elif Model == "REL_EVAL":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Relaxed_eval(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         # Relaxed_eval no usa phi (resuelve MS_linear relajado en w, no la política afín) — sin cambios
 
 
-    elif Model == "Iterative_heuristic":
+    elif Model == "IH":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, iterations = Iter_policy(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
             max_iter=cfg.iter, phi_mode=cfg.run.phi_mode)
