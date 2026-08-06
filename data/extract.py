@@ -1,7 +1,7 @@
 # data/extract.py
 import numpy as np
 import gurobipy as gp
-from data.generator import epsilon_ms, delta_ms, lead_times_ms
+from data.generator import epsilon_ms, delta_ms, lead_times_ms, build_scenario_groups
 from data.params import parametros, bill_of_materials, price_set
 
 def extract_params(cfg):
@@ -29,5 +29,10 @@ def extract_params(cfg):
         I0 = [0] * comp
     else:
         I0 = [sum((a - b * I0)*A[i][j] for j in range(prod)) for i in range(comp)]
+
+    # Si la búsqueda local está activada, construimos el árbol de escenarios.
+    # Usamos las variables stages, scenarios y branching de cfg.size
+    if cfg.run.local_search:
+        cfg.size.scenario_groups = build_scenario_groups(cfg.size.stages,cfg.size.scenarios,cfg.size.branching)
 
     return C, H, pi, A, price, mult, add, L, a, b, I0

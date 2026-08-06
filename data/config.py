@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 @dataclass
 class ProblemSize:
@@ -11,6 +11,7 @@ class ProblemSize:
     branching: List[int];       # Scenario tree branching
     seed: int;                  # Seed
     time_limit: int             # Runtime limit
+    scenario_groups: Optional[Dict[int, List[List[int]]]] = None
 
 @dataclass
 class BomConfig:
@@ -48,6 +49,7 @@ class RunConfig:
     W_cts: bool = False
     features: bool = False
     phi_mode: str = "eps_delta"   # "eps" | "eps_delta" | "eps_lt" | "eps_delta_lt"
+    local_search: bool = False # True if local search applied to MS_linear, with AF_EVAL initial solution
 
 @dataclass
 class OutputConfig:
