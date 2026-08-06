@@ -39,6 +39,7 @@ def solve(cfg):
     show_boxplot = cfg.Output.show_boxplot
     show_candlestick = cfg.Output.show_candlestick
     show_kpis = cfg.Output.show_kpis
+    local_search = cfg.run.local_search
     
     if inst is not None:
         comp = len(A); prod = len(A[0])
@@ -131,6 +132,39 @@ def solve(cfg):
     # m.Params.NonConvex = 2
 #=====================================================================================================================================
     m.optimize()
+
+#=====================================================================================================================================
+    # LOCAL SEARCH SECTION
+    # Verifica que exista una solución óptima del paso 3 y que sea un modelo compatible
+    if m.status == GRB.OPTIMAL and getattr(cfg.run, 'local_search', False) and Model in ["AF_EVAL", "REL_EVAL", "IH"]:
+        from sol_approach.local_search import local_search_first_improvement
+        
+        # 1. Definir los sets iterables para el modelo matemático
+        J_list = list(range(prod))
+        T_list = list(range(stages))
+        S_list = list(range(scenarios))
+        
+        # 2. Extraer el w inicial desde las cotas fijadas por AF_EVAL / REL_EVAL
+        initial_w = {}
+        for j in J_list:
+            for t in T_list:
+                for p_idx in range(len(price)):
+                    for s in S_list:
+                        # CORRECCIÓN: Guardamos usando p_idx como llave, no el valor real
+                        initial_w[(j, t, p_idx, s)] = w_vars[j, t, p_idx, s].lb
+        
+        # 3. Necesitas proveer la estructura de partición de información F_{t-1}
+        # Debes asegurar que cfg.size.scenario_groups contenga la matriz de nodos no-anticipativos
+        scenario_groups = cfg.size.scenario_groups 
+        
+        # 4. Ejecutar heurística First Improvement
+        final_w, best_obj = local_search_first_improvement(ms_model=m,w_var=w_vars,initial_w=initial_w,
+            J=J_list, T=T_list, S=S_list, P=price,scenario_groups=scenario_groups)
+        
+        incumbent = best_obj
+        bestbd = m.objBound 
+        gap = 0.0
+#=====================================================================================================================================
 
     if m.status == GRB.OPTIMAL:
         incumbent = m.objVal

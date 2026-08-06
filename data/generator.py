@@ -94,3 +94,32 @@ def lead_times_ms(inst, comp, time, scenarios, branching_structure, seed, lb=Non
         return L_deterministic
 
     return L_stochastic
+
+
+def build_scenario_groups(time, scenarios, branching_structure):
+    """
+    Construye los nodos del árbol de escenarios basándose en la estructura de ramificación.
+    Retorna un diccionario {t: [[escenarios_nodo_1], [escenarios_nodo_2], ...]}
+    """
+    scenario_groups = {}
+
+    # Replicamos tu lógica de relleno de la estructura[cite: 4]
+    structure = branching_structure + [1]*(time - len(branching_structure))
+    n_groups = 1
+
+    for t in range(time):
+        scenarios_per_group = int(scenarios / n_groups)
+        groups_at_t = []
+        
+        for g in range(n_groups):
+            first_scen = g * scenarios_per_group
+            # Agrupamos los índices de los escenarios que pertenecen a este nodo
+            group = list(range(first_scen, first_scen + scenarios_per_group))
+            groups_at_t.append(group)
+            
+        scenario_groups[t] = groups_at_t
+        
+        # Actualizamos n_groups para el siguiente periodo (hijos del nodo)[cite: 4]
+        n_groups = n_groups * structure[t] 
+        
+    return scenario_groups

@@ -96,12 +96,12 @@ vss_ts_calc = False
 
 ##############################################
 # EXPERIMENTAL SETTINGS (True / False)
-show_var = True   # export solution in an excel file. Can be used for fine analisys of decision behavior.
+show_var = False   # export solution in an excel file. Can be used for fine analisys of decision behavior.
 #=============================================
-lambda_app = False   # Use lambda approximation to extract affine policy and evaluate in MS_linear with w fixed [OLD]
-show_heatmap = True   # Save heatmaps to figures for every decision variable
+lambda_app = False   # Use lambda approximation to extract affine policy and evaluate in MS_linear with w fixed [OLD, NOW AF_EVAL MODEL]
+show_heatmap = False   # Save heatmaps to figures for every decision variable
 show_boxplot = False   # Save boxplot to figures for every decision variable
-show_candlestick = True   # Save candlestick to figures for every decision variable
+show_candlestick = False   # Save candlestick to figures for every decision variable
 #=============================================
 show_kpis = True   # Calculate and print KPIs for fulfillment, utilization, inventory ratio and weighted average price
 #=============================================
@@ -113,7 +113,7 @@ iter = 1 # 1 for a single instance. >2 for several (mean results, odd number rec
 
 
 #=============================================
-#=============================================
+#=============================================366
 # SPECIFIC INSTANCE CONFIGS
 #=============================================
 # Here we can use very specific instances from the literature. All will be detailed in params.py and generator.py
@@ -179,11 +179,12 @@ dem_sweep = False
 # ==============================================================================
 if single:
     run_configs = [
-        # RunConfig(Model="MS_linear", W_cts=True),
+        RunConfig(Model="MS_linear", W_cts=True),
         # RunConfig(Model="MS_linear_affine", W_cts=False),
         RunConfig(Model="AF_EVAL"),
         RunConfig(Model="REL_EVAL"),
-        RunConfig(Model="IH"),
+        RunConfig(Model="IH", local_search=True),
+        RunConfig(Model="REL_EVAL", local_search=True),
     ]
 
     for run in run_configs:
