@@ -11,11 +11,18 @@ import copy
 
 ##############################################
 # GENERAL SIZE #
-comp = 2 
-prod = 2
+comp = 5
+prod = 4
 stages = 8                     
 branching = [2,2,2,2,2,2,2]   # Binary tree
 scenarios = math.prod(branching)   # 128 scenarios
+##############################################
+
+##############################################
+# Out of Sample (OOS) tree
+# Topología Out-of-Sample (Evaluación)
+oos_branching = [10, 5, 4, 2, 2, 1, 1] # 800 escenarios
+oos_scenarios = math.prod(oos_branching)
 ##############################################
 
 
@@ -107,7 +114,7 @@ show_kpis = True   # Calculate and print KPIs for fulfillment, utilization, inve
 #=============================================
 time_limit = 900 # limit for each iteration
 seed = 5
-iter = 1 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+iter = 15 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
@@ -130,7 +137,8 @@ inst = "None"
 from data.config import (ProblemSize, BomConfig, CostConfig, PriceConfig,
                      DemandConfig, LeadTimeConfig, RunConfig, OutputConfig, ExperimentConfig)
 
-size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit, 
+                   None, oos_branching, oos_scenarios)
 bom = BomConfig(min_use, max_use, other)
 costs = CostConfig(min_cost, max_cost, inv_factor, I0)
 price = PriceConfig(lb_price, ub_price, step_price)
@@ -165,12 +173,13 @@ Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_can
 # ==============================================================================
 # Ejecuciones (switch True / False)
 #============================================
-single = True # True for single instance
+single = False # True for single instance
 comp_sweep = False
 prod_sweep = False
 branching_sweep = False
 lead_time_sweep = False
 dem_sweep = False
+oos_sweep = True
 #============================================
 
 
@@ -179,12 +188,14 @@ dem_sweep = False
 # ==============================================================================
 if single:
     run_configs = [
-        RunConfig(Model="MS_linear", W_cts=True),
-        # RunConfig(Model="MS_linear_affine", W_cts=False),
-        RunConfig(Model="AF_EVAL"),
-        RunConfig(Model="REL_EVAL"),
-        RunConfig(Model="IH", local_search=True),
-        RunConfig(Model="REL_EVAL", local_search=True),
+        # RunConfig(Model="MS_linear", W_cts=True),
+        # # RunConfig(Model="MS_linear_affine", W_cts=False),
+        # RunConfig(Model="AF_EVAL"),
+        # RunConfig(Model="REL_EVAL"),
+        # RunConfig(Model="IH",),
+        RunConfig(Model="AF_EVAL", local_search=True),
+        # RunConfig(Model="REL_EVAL", local_search=True),
+        # RunConfig(Model="IH", local_search=True),
     ]
 
     for run in run_configs:
@@ -346,3 +357,39 @@ if dem_sweep:
             cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
             
             _,_ = instances(cfg, tag="demand", param_name="demand", param_value=val)
+
+
+# ==============================================================================
+# Out of Sample SWEEP
+branching = [
+            [5,5,5,2,1,1,1],
+            [10,5,2,2,1,1,1],
+            [20,5,2,1,1,1,1],
+            [50,2,2,1,1,1,1],
+            [125,2,1,1,1,1,1],
+            ]
+# ==============================================================================
+if oos_sweep:
+    i=0
+    for val in branching:    
+
+        branching = val
+        scenarios = math.prod(branching)   # 128 scenarios
+        i+=1
+        size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+        bom = BomConfig(min_use, max_use, other)
+        costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+        price = PriceConfig(lb_price, ub_price, step_price)
+        demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
+        lead_times = LeadTimeConfig(lb_L, ub_L, det)
+        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                            vss_calc, evpi_calc, vss_ts_calc)
+
+        for run in run_configs:
+            current_size = copy.deepcopy(size)
+            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+            
+            _,_ = instances(cfg, tag="branching", param_name="branching", param_value=i)
+
+    branching = [2,2,2,2,2,2,2] # reset base value
+    scenarios = math.prod(branching)   # 128 scenarios

@@ -2,7 +2,7 @@ import gurobipy as gp
 from gurobipy import GRB
 
 
-def local_search_first_improvement(ms_model, w_var, initial_w, J, T, S, P, scenario_groups):
+def local_search_first_improvement(ms_model, w_var, initial_w, J, T, S, P, scenario_groups, ls_iterations=20):
     """
     ms_model: Modelo Gurobi del MS_linear.
     w_var: Diccionario de variables de decisión de precio w[j,t,p_idx,s].
@@ -30,7 +30,7 @@ def local_search_first_improvement(ms_model, w_var, initial_w, J, T, S, P, scena
 
     print(f"--- Iniciando Local Search (First Improvement) | Obj Inicial: {best_obj} ---")
 
-    while improvement and iteration < 20:
+    while improvement and iteration < ls_iterations:
         improvement = False
         iteration += 1
         

@@ -4,18 +4,22 @@ from data.extract import extract_params
 
 from models.multistage import Multistage_problem
 from models.linealization_prop import MS_linear, TS_linear
+
 from sol_approach.affine_funct_app import MS_linear_affine, MS_affine_cts
 from sol_approach.price_app_eval import Affine_eval, Relaxed_eval
 from sol_approach.twostage_affine import TS_linear_affine
 from sol_approach.iterative_heuristic import Iter_policy
-from uncertainty_analysis.sto_computation import uncertainty_analysis
+from sol_approach.local_search import local_search_first_improvement
+from sol_approach.out_of_sample import Affine_OOS_eval
 
+from uncertainty_analysis.sto_computation import uncertainty_analysis
 from output_config.results_output import export
 from output_config.lambda_export import fix_w_from_lambda
 
 import pandas as pd
 import numpy as np
 from itertools import product
+import time
 import gurobipy as gp
 from gurobipy import GRB
 
@@ -90,7 +94,7 @@ def solve(cfg):
 
 
     elif Model == "AF_EVAL":
-        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Affine_eval(
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, rho_opt, Gamma_opt = Affine_eval(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
             phi_mode=cfg.run.phi_mode)
 
@@ -131,39 +135,90 @@ def solve(cfg):
     # m.setParam("MIPGap", 5e-4) # Gap tol: 0.05% // Gurobi base tol: 0.01%/1e-4
     # m.Params.NonConvex = 2
 #=====================================================================================================================================
-    m.optimize()
-
+    m.optimize() # ¡Where magic happens! (or not)
 #=====================================================================================================================================
     # LOCAL SEARCH SECTION
     # Verifica que exista una solución óptima del paso 3 y que sea un modelo compatible
     if m.status == GRB.OPTIMAL and getattr(cfg.run, 'local_search', False) and Model in ["AF_EVAL", "REL_EVAL", "IH"]:
-        from sol_approach.local_search import local_search_first_improvement
         
         # 1. Definir los sets iterables para el modelo matemático
         J_list = list(range(prod))
         T_list = list(range(stages))
         S_list = list(range(scenarios))
-        
+
         # 2. Extraer el w inicial desde las cotas fijadas por AF_EVAL / REL_EVAL
         initial_w = {}
         for j in J_list:
             for t in T_list:
                 for p_idx in range(len(price)):
                     for s in S_list:
-                        # CORRECCIÓN: Guardamos usando p_idx como llave, no el valor real
                         initial_w[(j, t, p_idx, s)] = w_vars[j, t, p_idx, s].lb
-        
+
         # 3. Necesitas proveer la estructura de partición de información F_{t-1}
         # Debes asegurar que cfg.size.scenario_groups contenga la matriz de nodos no-anticipativos
         scenario_groups = cfg.size.scenario_groups 
         
         # 4. Ejecutar heurística First Improvement
+        ls_start = time.time()
         final_w, best_obj = local_search_first_improvement(ms_model=m,w_var=w_vars,initial_w=initial_w,
-            J=J_list, T=T_list, S=S_list, P=price,scenario_groups=scenario_groups)
+            J=J_list, T=T_list, S=S_list, P=price,scenario_groups=scenario_groups, 
+            ls_iterations=10) # n° iterations for local search. The less has the more tractable it is
+        
+        ls_time = time.time() - ls_start
+        solve_time += ls_time
         
         incumbent = best_obj
         bestbd = m.objBound 
         gap = 0.0
+#=====================================================================================================================================
+    # OUT-OF-SAMPLE (OOS) SECTION
+    # Validamos que el modelo sea AF_EVAL, haya sido óptimo, y tengamos el flag activado
+    if m.status == GRB.OPTIMAL and getattr(cfg.run, 'oos_eval', False) and Model == "AF_EVAL":
+        print("\n--- Iniciando evaluación Out-of-Sample (OOS) ---")
+        
+        oos_start = time.time()
+        
+        # Extraemos la topología OOS desde la configuración
+        oos_seed = seed + 1000 
+        oos_branching = cfg.size.oos_branching
+        oos_scenarios = cfg.size.oos_scenarios
+        
+        # 1. Generamos los tensores de incertidumbre con las dimensiones del árbol masivo OOS
+        ypsilon_oos = epsilon_ms(oos_scenarios, stages, cfg.demand.lb_epsilon, cfg.demand.ub_epsilon, oos_seed)
+        delta_oos = delta_ms(oos_scenarios, prod, stages, cfg.demand.mu_delta, cfg.demand.std_delta, oos_seed)
+        
+        if det:
+            L_oos = L 
+        else:
+            L_oos = lead_times_ms(comp, stages, oos_scenarios, cfg.lead_times.lb_L, cfg.lead_times.ub_L, oos_seed)
+
+        # Asumiendo que Affine_eval retornó rho_opt y Gamma_opt:
+        # 2. Pasamos oos_scenarios y oos_branching al modelo evaluador
+        m_oos, x_oos, w_oos, y_oos, I_oos, A_oos, D_oos = Affine_OOS_eval(
+            oos_seed, stages, oos_scenarios, A, price, L_oos, det,
+            ypsilon_oos, delta_oos, a, b, C, H, pi, oos_branching, I0,
+            rho_opt, Gamma_opt, phi_mode=cfg.run.phi_mode
+        )
+        
+        # Optimizar el modelo extensivo OOS (solo resuelve x e y, w está fijo)
+        m_oos.setParam('TimeLimit', time_limit)
+        m_oos.setParam('OutputFlag', 1)
+        m_oos.optimize()
+        
+        oos_time = time.time() - oos_start
+        solve_time += oos_time
+        
+        if m_oos.status == GRB.OPTIMAL:
+            incumbent = m_oos.objVal # Este es el verdadero valor esperado de la política
+            bestbd = m_oos.objBound
+            gap = 0.0
+            print(f"OOS ObjVal (True Expected Profit): {incumbent}")
+            
+            # Sobrescribimos las variables para que el cálculo de KPIs use los resultados OOS
+            m, x_vars, w_vars, y_vars, I_vars, D_term = m_oos, x_oos, w_oos, y_oos, I_oos, D_oos
+            scenarios = oos_scenarios # Importante para que los KPIs promedien sobre el n° correcto
+        else:
+            print("Evaluación OOS fallida o infactible.")
 #=====================================================================================================================================
 
     if m.status == GRB.OPTIMAL:
