@@ -12,6 +12,8 @@ class ProblemSize:
     seed: int;                  # Seed
     time_limit: int             # Runtime limit
     scenario_groups: Optional[Dict[int, List[List[int]]]] = None
+    oos_branching: Optional[List[int]] = None  # Params OOS
+    oos_scenarios: Optional[int] = None
 
 @dataclass
 class BomConfig:
@@ -49,7 +51,8 @@ class RunConfig:
     W_cts: bool = False
     features: bool = False
     phi_mode: str = "eps_delta"   # "eps" | "eps_delta" | "eps_lt" | "eps_delta_lt"
-    local_search: bool = False # True if local search applied to MS_linear, with AF_EVAL initial solution
+    local_search: bool = False # True if local search applied to MS_linear, with AF_EVAL initial solution (or other)
+    oos_eval: bool = False    # True if out-of-sample evaluation of MS_linear with AF_EVAL solution
 
 @dataclass
 class OutputConfig:

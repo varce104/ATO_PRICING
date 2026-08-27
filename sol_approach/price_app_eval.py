@@ -12,7 +12,7 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
                 ypsilon, delta, a, b, C, H, pi, branching, I0, phi_mode="eps_delta"):
     prod, pr = len(A[0]), len(price)
 
-    m_af, _, lam_w, _, _, _, _, _, _, _, _ = MS_linear_affine(
+    m_af, x_af, lam_w, y_af, y_bar_af, I_af, A_out, D_term, rho_var, Gamma_var, K_feat = MS_linear_affine(
         seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0,
         phi_mode=phi_mode)
     
@@ -25,7 +25,16 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
 
     if m_af.status != GRB.OPTIMAL:
         print("MS_linear_affine no es óptimo.")
-        return None, None, None, None, None, None, None, None
+        return [None]*10
+
+    # Extraer tensores óptimos de la política afín global
+    rho_opt = np.zeros((prod, stages, pr))
+    Gamma_opt = np.zeros((prod, stages, pr, K_feat))
+    
+    for j, t, p in product(range(prod), range(stages), range(pr)):
+        rho_opt[j, t, p] = rho_var[j, t, p].X
+        for q in range(K_feat):
+            Gamma_opt[j, t, p, q] = Gamma_var[j, t, p, q].X
 
     obj_affine = m_af.objVal
     w_bin = extract_solution_arrays_affine_w(lam_w, prod, stages, scenarios, pr)
@@ -40,8 +49,7 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
         w_vars[j, t, p, s].UB = val
 
     print(f"[Affine eval] Obj afín: {obj_affine:.4f}")
-    return m, x_vars, w_vars, y_vars, I_vars, A_out, D_term, solve_time
-
+    return m, x_vars, w_vars, y_vars, I_vars, A_out, D_term, solve_time, rho_opt, Gamma_opt
 
 def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
                  ypsilon, delta, a, b, C, H, pi, branching, I0):
