@@ -132,7 +132,6 @@ def MS_linear(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C
         n_groups = n_groups * branch_factor 
 
 
-
 def TS_linear(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching_structure, I0=None, w_cts=False): 
     random.seed(seed)
     comp = len(A)
@@ -147,7 +146,6 @@ def TS_linear(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C
         w = m.addVars(prod, time, pr, vtype=GRB.BINARY, name = "w")
 
     x = m.addVars(comp, time, vtype=GRB.CONTINUOUS, name="x", lb=0)
-
     I = m.addVars(comp, time, scenarios, vtype=GRB.CONTINUOUS, name="I", lb=0)
     y = m.addVars(prod, time, scenarios, vtype=GRB.CONTINUOUS, name="y", lb=0) 
     r = m.addVars(prod, time, pr, scenarios, vtype=GRB.CONTINUOUS, name="r", lb=0)
@@ -215,4 +213,22 @@ def TS_linear(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C
             gp.quicksum(alpha[i, tau, t, s] * x[i, tau] for tau in range(time)))
             for i in range(comp) for t in range(time) for s in range(scenarios))
 
-    return m, x, w, y, I, A, D_term
+# =========================================================================
+    # NUEVO: Adaptación de variables deterministas a estructura multietapa 
+    # para compatibilidad con kpi_performance.py y extract_solution_arrays
+    # =========================================================================
+    x_ms = {}
+    w_ms = {}
+    
+    for s in range(scenarios):
+        for i in range(comp):
+            for t in range(time):
+                # Referenciamos el mismo objeto Gurobi en cada escenario
+                x_ms[i, t, s] = x[i, t]
+                
+        for j in range(prod):
+            for t in range(time):
+                for p in range(pr):
+                    w_ms[j, t, p, s] = w[j, t, p]
+
+    return m, x_ms, w_ms, y, I, A, D_term

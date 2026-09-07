@@ -11,8 +11,8 @@ import copy
 
 ##############################################
 # GENERAL SIZE #
-comp = 5
-prod = 4
+comp = 3
+prod = 2
 stages = 8                     
 branching = [2,2,2,2,2,2,2]   # Binary tree
 scenarios = math.prod(branching)   # 128 scenarios
@@ -21,8 +21,10 @@ scenarios = math.prod(branching)   # 128 scenarios
 ##############################################
 # Out of Sample (OOS) tree
 # Topología Out-of-Sample (Evaluación)
-oos_branching = [10, 5, 4, 2, 2, 1, 1] # 800 escenarios
+oos_branching = [10, 10, 5, 2, 2, 1, 1] # 2000 escenarios
 oos_scenarios = math.prod(oos_branching)
+# branching = [10, 10, 5, 2, 2, 1, 1] # 2000 escenarios
+# scenarios = math.prod(branching)
 ##############################################
 
 
@@ -32,7 +34,7 @@ oos_scenarios = math.prod(oos_branching)
 #   define randomly the BoM, where products use an amount of components between [min_use, max_use]
 #   or use a specific BoM defined in parameters.py (W model, N model, etc)
 min_use = 3
-max_use = 4
+max_use = 3
 other = False
 ##############################################
 
@@ -52,7 +54,7 @@ step_price = 5
 # Similar to how the discrete set of prices work. Define the set [min_cost, max_cost] in steps of five 
 # (the steps can be modified in params.py)
 min_cost = 5
-max_cost = 25
+max_cost = 20
 inv_factor = 0.2
 # I0: quantity to satisfy expected demand at given price
 # select price --> determine expected demand --> satisfy initial inventory 
@@ -72,7 +74,7 @@ std_delta = 2
 #############################################
 # PRICE LINEAR EXPRESSION - DEMAND
 # Decreasing linnear expression for the demand. given by: (a - b * w)
-a = 100
+a = 150
 b = 1.6
 # Full demand expression given by: epsilon[t,s] * (a - b * w[j,t,p,s]) + delta[j,t,s]
 ##############################################
@@ -95,17 +97,16 @@ det = False # False for stochastic lead times (While we tested with deterministi
 #   - EVPI: Expected Value of Perfect Information
 #   - VSS_TS: Value of Stochastic Solution based on two stage model
 
-vss_calc = False
-evpi_calc = False
+vss_calc = True
+evpi_calc = True
 vss_ts_calc = False   
 ##############################################
 
 
 ##############################################
 # EXPERIMENTAL SETTINGS (True / False)
-show_var = False   # export solution in an excel file. Can be used for fine analisys of decision behavior.
+show_sol = False   # export solution in an excel file. Can be used for fine analisys of decision behavior.
 #=============================================
-lambda_app = False   # Use lambda approximation to extract affine policy and evaluate in MS_linear with w fixed [OLD, NOW AF_EVAL MODEL]
 show_heatmap = False   # Save heatmaps to figures for every decision variable
 show_boxplot = False   # Save boxplot to figures for every decision variable
 show_candlestick = False   # Save candlestick to figures for every decision variable
@@ -113,8 +114,8 @@ show_candlestick = False   # Save candlestick to figures for every decision vari
 show_kpis = True   # Calculate and print KPIs for fulfillment, utilization, inventory ratio and weighted average price
 #=============================================
 time_limit = 900 # limit for each iteration
-seed = 5
-iter = 15 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+seed = 20
+iter = 11 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
@@ -128,10 +129,10 @@ iter = 15 # 1 for a single instance. >2 for several (mean results, odd number re
 #=============================================
 inst = "None"
 #=============================================
-# "None" -> Manual input of parameters. Beware of infeasibility!
-# "Oh_et_al_1" -> Simple W model (3x2) based on Oh et al. (2014)
-# "Oh_et_al_2" -> 5x4 model used by Akçay & Xu (2004) and Oh et al. (2014)
-# "Oh_et_al_3" -> 11 x 11 instance based on Oh et al. (2014)
+    # "None" -> Manual input of parameters. Beware of infeasibility!
+    # "Oh_et_al_1" -> Simple W model (3x2) based on Oh et al. (2014)
+    # "Oh_et_al_2" -> 5x4 model used by Akçay & Xu (2004) and Oh et al. (2014)
+    # "Oh_et_al_3" -> 11 x 11 instance based on Oh et al. (2014)
 #=============================================
 
 from data.config import (ProblemSize, BomConfig, CostConfig, PriceConfig,
@@ -144,42 +145,48 @@ costs = CostConfig(min_cost, max_cost, inv_factor, I0)
 price = PriceConfig(lb_price, ub_price, step_price)
 demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
 lead_times = LeadTimeConfig(lb_L, ub_L, det)
-Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
-                    vss_calc, evpi_calc, vss_ts_calc)
+Output = OutputConfig(show_sol, 
+                      show_heatmap, 
+                      show_boxplot, 
+                      show_candlestick, 
+                      show_kpis, 
+                      vss_calc, 
+                      evpi_calc, 
+                      vss_ts_calc)
 
 #=============================================
 # SPECIFIC CONFIGS
 #=============================================
-# in this research we explore the ATO problem with several model formulations. They are detailed below.
-# depending on their nature, they will be in either the models or the sol_approach folders.
-#============================================
-#   "MS" -> Standard multistage model (non-linear).
-#============================================
-#   "MS_linear" -> multistage with linealized revenue (MILP). 
-#============================================
-#   "MS_linear_affine" -> multistage with linealized revenue AND affine pricing policy.
-#============================================
-#   "AF_EVAL" -> Solves MS_linear_affine, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
-#   "REL_EVAL" -> Solve relaxed MS_linear, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
-#============================================
-#   "IH" -> iterative heuristic: iterates between solving pricing problem and inventory problem (features vector contains inventory levels from inventory problem)
-#============================================
-# Others:
-#   "TS_linear" -> Two stage version of MS_linear model.
-#   "TS_linear_affine" -> two-stage with linearized revenue AND affine pricing policy (x here-and-now).
-#   "Relaxed_eval" ->  Relax MS_linear , extract and approximate cts policy to binary, evaluate in MS_linear with w fixed.
+    # in this research we explore the ATO problem with several model formulations. They are detailed below.
+    # depending on their nature, they will be in either the models or the sol_approach folders.
+    #============================================
+    #   "MS" -> Standard multistage model (non-linear).
+    #============================================
+    #   "MS_linear" -> multistage with linealized revenue (MILP). 
+    #============================================
+    #   "MS_linear_affine" -> multistage with linealized revenue AND affine pricing policy.
+    #============================================
+    #   "AF_EVAL" -> Solves MS_linear_affine, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
+    #   "REL_EVAL" -> Solve relaxed MS_linear, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
+    #============================================
+    #   "IH" -> iterative heuristic: iterates between solving pricing problem and inventory problem (features vector contains inventory levels from inventory problem)
+    #============================================
+    # Others:
+    #   "TS_linear" -> Two stage version of MS_linear model.
+    #   "TS_linear_affine" -> two-stage with linearized revenue AND affine pricing policy (x here-and-now).
+    #   "Relaxed_eval" ->  Relax MS_linear , extract and approximate cts policy to binary, evaluate in MS_linear with w fixed.
 #============================================
 
 # ==============================================================================
 # Ejecuciones (switch True / False)
 #============================================
-single = False # True for single instance
+single = True # True for single instance
 comp_sweep = False
 prod_sweep = False
 branching_sweep = False
 lead_time_sweep = False
 dem_sweep = False
-oos_sweep = True
+oos_sweep = False
 #============================================
 
 
@@ -188,12 +195,13 @@ oos_sweep = True
 # ==============================================================================
 if single:
     run_configs = [
-        # RunConfig(Model="MS_linear", W_cts=True),
+        # RunConfig(Model="MS_linear", W_cts=False),
+        # RunConfig(Model="TS_linear", W_cts=False),
         # # RunConfig(Model="MS_linear_affine", W_cts=False),
         # RunConfig(Model="AF_EVAL"),
         # RunConfig(Model="REL_EVAL"),
-        # RunConfig(Model="IH",),
-        RunConfig(Model="AF_EVAL", local_search=True),
+        RunConfig(Model="IH",),
+        # RunConfig(Model="AF_EVAL", local_search=True),
         # RunConfig(Model="REL_EVAL", local_search=True),
         # RunConfig(Model="IH", local_search=True),
     ]
@@ -208,17 +216,17 @@ if single:
 # ==============================================================================
 # BARRIDO PARAMÉTRICO (SENSITIVITY ANALYSIS SWEEP)
 # ==============================================================================
-run_configs = [
-    RunConfig(Model="MS_linear", W_cts=True),
-    RunConfig(Model="AF_EVAL"),
-    RunConfig(Model="REL_EVAL"),
-    RunConfig(Model="IH"),
-]
+# run_configs = [
+#     RunConfig(Model="MS_linear", W_cts=True),
+#     RunConfig(Model="AF_EVAL"),
+#     RunConfig(Model="REL_EVAL"),
+#     RunConfig(Model="IH"),
+# ]
 # ==============================================================================
 # COMPONENTS SWEEP
 # ==============================================================================
-comps = [4,5,6,7,8,9,10]
 if comp_sweep:
+    comps = [4,5,6,7,8,9,10]
     for val in comps: 
 
         comp = val
@@ -229,7 +237,7 @@ if comp_sweep:
         price = PriceConfig(lb_price, ub_price, step_price)
         demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
         lead_times = LeadTimeConfig(lb_L, ub_L, det)
-        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+        Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
                             vss_calc, evpi_calc, vss_ts_calc)
 
         for run in run_configs:
@@ -243,8 +251,8 @@ if comp_sweep:
 # ==============================================================================
 # PRODUCTS SWEEP
 # ==============================================================================
-prod = [3,4,5,6,7,8,9]
 if prod_sweep:
+    prod = [3,4,5,6,7,8,9]
     for val in prod:    
 
         prod = val
@@ -255,7 +263,7 @@ if prod_sweep:
         price = PriceConfig(lb_price, ub_price, step_price)
         demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
         lead_times = LeadTimeConfig(lb_L, ub_L, det)
-        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+        Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
                             vss_calc, evpi_calc, vss_ts_calc)
 
         for run in run_configs:
@@ -268,15 +276,15 @@ if prod_sweep:
 
 # ==============================================================================
 # BRANCHING SWEEP
-branching = [
+# ==============================================================================
+if branching_sweep:
+    branching = [
             [5,5,5,2,1,1,1],
             [10,5,2,2,1,1,1],
             [20,5,2,1,1,1,1],
             [50,2,2,1,1,1,1],
             [125,2,1,1,1,1,1],
             ]
-# ==============================================================================
-if branching_sweep:
     i=0
     for val in branching:    
 
@@ -289,7 +297,7 @@ if branching_sweep:
         price = PriceConfig(lb_price, ub_price, step_price)
         demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
         lead_times = LeadTimeConfig(lb_L, ub_L, det)
-        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+        Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
                             vss_calc, evpi_calc, vss_ts_calc)
 
         for run in run_configs:
@@ -304,17 +312,17 @@ if branching_sweep:
 # ==============================================================================
 # LEAD TIMES SWEEP
 # ==============================================================================
-run_configs = [
-    RunConfig(Model="MS_linear", W_cts=True),
-    RunConfig(Model="REL_EVAL"),
-    RunConfig(Model="AF_EVAL", phi_mode="eps"),
-    RunConfig(Model="AF_EVAL", phi_mode="eps_delta"),
-    RunConfig(Model="AF_EVAL", phi_mode="eps_lt"),
-    RunConfig(Model="AF_EVAL", phi_mode="eps_delta_lt"),
-]
+# run_configs = [
+#     RunConfig(Model="MS_linear", W_cts=True),
+#     # RunConfig(Model="REL_EVAL"),
+#     RunConfig(Model="AF_EVAL", phi_mode="eps"),
+#     RunConfig(Model="AF_EVAL", phi_mode="eps_delta"),
+#     RunConfig(Model="AF_EVAL", phi_mode="eps_lt"),
+#     RunConfig(Model="AF_EVAL", phi_mode="eps_delta_lt"),
+# ]
 
-lead_times = [2,3,4,5]
 if lead_time_sweep:
+    lead_times = [2,3,4,5]
     for val in lead_times:    
 
         ub_L = val
@@ -325,7 +333,7 @@ if lead_time_sweep:
         price = PriceConfig(lb_price, ub_price, step_price)
         demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
         lead_times = LeadTimeConfig(lb_L, ub_L, det)
-        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+        Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
                             vss_calc, evpi_calc, vss_ts_calc)
 
         for run in run_configs:
@@ -339,8 +347,8 @@ if lead_time_sweep:
 # ==============================================================================
 # DEMAND SHOCK SWEEP
 # ==============================================================================
-dem_var = [0.15,0.3,0.45,0.6]
 if dem_sweep:
+    dem_var = [0.15,0.3,0.45,0.6]
     for val in dem_var:    
 
         size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
@@ -349,7 +357,7 @@ if dem_sweep:
         price = PriceConfig(lb_price, ub_price, step_price)
         demand = DemandConfig(a, b, 1-val, 1+val, mu_delta, std_delta)
         lead_times = LeadTimeConfig(lb_L, ub_L, det)
-        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+        Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
                             vss_calc, evpi_calc, vss_ts_calc)
 
         for run in run_configs:
@@ -358,38 +366,51 @@ if dem_sweep:
             
             _,_ = instances(cfg, tag="demand", param_name="demand", param_value=val)
 
+# run_configs = [
+#     RunConfig(Model="MS_linear", W_cts=True),
+#     # RunConfig(Model="REL_EVAL"),
+#     RunConfig(Model="AF_EVAL"),
+#     RunConfig(Model="AF_EVAL", oos_eval=True),
+# ]
 
 # ==============================================================================
 # Out of Sample SWEEP
-branching = [
-            [5,5,5,2,1,1,1],
-            [10,5,2,2,1,1,1],
-            [20,5,2,1,1,1,1],
-            [50,2,2,1,1,1,1],
-            [125,2,1,1,1,1,1],
-            ]
 # ==============================================================================
-if oos_sweep:
-    i=0
-    for val in branching:    
+# Out of Sample SWEEP (Análisis de Estabilidad In-Sample)
+# ==============================================================================
 
+if oos_sweep:
+    in_sample_branchings = [
+            [2,2,2,2,2,1,1],   # 32 escenarios (entrenamiento base)
+            # [2,2,2,2,2,2,2],   # 128 escenarios 
+            [4,2,2,2,2,2,1],   # 128 escenarios
+            [5,4,2,2,2,1,1],   # 160 escenarios
+            [10,5,2,2,1,1,1],  # 200 escenarios
+            ]
+    for val in in_sample_branchings:    
         branching = val
-        scenarios = math.prod(branching)   # 128 scenarios
-        i+=1
-        size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+        scenarios = math.prod(branching)
+        
+        # El objeto ProblemSize inyecta la topología in-sample variante, y la topología OOS estática masiva
+        size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit, 
+                           None, oos_branching, oos_scenarios)
         bom = BomConfig(min_use, max_use, other)
         costs = CostConfig(min_cost, max_cost, inv_factor, I0)
         price = PriceConfig(lb_price, ub_price, step_price)
         demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
         lead_times = LeadTimeConfig(lb_L, ub_L, det)
-        Output = OutputConfig(show_var, lambda_app, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+        Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
                             vss_calc, evpi_calc, vss_ts_calc)
 
-        for run in run_configs:
+        for run_oos in run_configs:
+        # Activamos específicamente el flag oos_eval=True para que solver.py entre a la sección OOS
+        # run_oos = RunConfig(Model="AF_EVAL", oos_eval=True)
+        
             current_size = copy.deepcopy(size)
-            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
-            
-            _,_ = instances(cfg, tag="branching", param_name="branching", param_value=i)
+            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run_oos, Output, iter)
+        
+            # Cambiamos el tag para identificar fácilmente los resultados en el output
+            _,_ = instances(cfg, tag="oos_stability", param_name="in_sample_scenarios", param_value=scenarios)
 
     branching = [2,2,2,2,2,2,2] # reset base value
-    scenarios = math.prod(branching)   # 128 scenarios
+    scenarios = math.prod(branching)

@@ -6,15 +6,15 @@ from output_config.graphs.candlestick import plot_candlestick_decisions
 
 from output_config.lambda_export import export_solution_to_excel_affine, export_affine_params_to_excel
 from output_config.fulfillment import demand_fulfillment, reconstruct_demand
-from output_config.kpi_performance import calculate_global_kpis
+from output_config.kpi_performance import calculate_global_kpis, calculate_financial_kpis
 import numpy as np
 
 
 def export(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, solutions):
     (seed, x_vars, w_vars, I_vars, y_vars, D_term, price, time, scenarios, A, det,
-     lambda_app, Model, rho, gamma, K_features, mult, add, a, b, pi, I0) = solutions
+     Model, rho, gamma, K_features, mult, add, a, b, pi, I0, C, H) = solutions
 
-    if lambda_app and Model in ("MS_linear_affine", "TS_linear_affine"):
+    if show_sol and Model in ("MS_linear_affine", "TS_linear_affine"):
         export_solution_to_excel_affine(f"var_results/MS_lambda_app_inst{seed}.xlsx", w_vars, time, scenarios, len(price), A, Model)
         export_affine_params_to_excel(f"var_results/MS_affine_params_inst{seed}.xlsx", rho, gamma, len(A[0]), time, len(price), K_features)
         return None
@@ -54,4 +54,10 @@ def export(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, so
         # Llamada directa pasando los arrays Numpy y parámetros desempaquetados de 'solutions'
         FR, UR, ISR, VWAP = calculate_global_kpis(x_val, price_eff, y_val, I_val, A, mult, add, a, b, pi, I0)
 
-    return FR, UR, ISR, VWAP
+        # Calcular métricas financieras
+        Exp_Rev, Exp_Proc_Cost, Exp_Inv_Cost = calculate_financial_kpis(x_val, price_eff, y_val, I_val, pi, C, H)
+        
+        # Retornamos los valores adicionales
+        return FR, UR, ISR, VWAP, Exp_Rev, Exp_Proc_Cost, Exp_Inv_Cost
+
+    return None, None, None, None, None, None, None  # Retorna valores nulos si no se calculan KPIs
