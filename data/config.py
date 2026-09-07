@@ -56,8 +56,7 @@ class RunConfig:
 
 @dataclass
 class OutputConfig:
-    show_var: bool = False
-    lambda_app: bool = False
+    show_sol: bool = False
     show_heatmap: bool = False
     show_boxplot: bool = False
     show_candlestick: bool = False

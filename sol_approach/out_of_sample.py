@@ -22,17 +22,15 @@ def Affine_OOS_eval(oos_seed, stages, oos_scenarios, A, price, L_oos, L_det,
 
     for j, t, s in product(range(prod), range(stages), range(oos_scenarios)):
         for p in range(pr):
-            # Proyección del intercepto y las pendientes sobre la nueva historia observada
             lam_oos[j, t, p, s] = rho_opt[j, t, p] + np.dot(Gamma_opt[j, t, p, :], phi_oos[s][t][:])
-            
-        # 3. Binarización determinista (argmax)
         best_p = int(np.argmax(lam_oos[j, t, :, s]))
         w_bin_oos[j, t, best_p, s] = 1.0
 
     # 4. Construir el modelo multietapa extensivo para el árbol OOS
+    #    w_cts=True: w ya viene decidido por la política, no necesita ser binario aquí
     m_oos, x_vars, w_vars, y_vars, I_vars, A_out, D_term = MS_linear(
         oos_seed, stages, oos_scenarios, A, price, L_oos, L_det,
-        ypsilon_oos, delta_oos, a, b, C, H, pi_oos, branching_oos, I0)
+        ypsilon_oos, delta_oos, a, b, C, H, pi_oos, branching_oos, I0, w_cts=True)
 
     # 5. Fijar las decisiones de pricing a la política evaluada
     for j, t, p, s in product(range(prod), range(stages), range(pr), range(oos_scenarios)):
