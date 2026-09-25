@@ -11,10 +11,10 @@ import copy
 
 ##############################################
 # GENERAL SIZE #
-comp = 3
-prod = 2
+comp = 5
+prod = 4
 stages = 8                     
-branching = [2,2,2,2,2,2,2]   # Binary tree
+branching = [10, 5, 2, 2, 2, 1, 1]   # Binary tree - 400 scenarios
 scenarios = math.prod(branching)   # 128 scenarios
 ##############################################
 
@@ -43,8 +43,8 @@ other = False
 # PRICES
 # The discrete set of prices defined by [lb_price, ub_price] in steps of step_price.
 # i.e, the discrete set [30,50] in steps of 2: [30, 32, 34,..., 48, 50]
-lb_price = 15
-ub_price = 60
+lb_price = 40
+ub_price = 80
 step_price = 5
 ##############################################
 
@@ -97,8 +97,8 @@ det = False # False for stochastic lead times (While we tested with deterministi
 #   - EVPI: Expected Value of Perfect Information
 #   - VSS_TS: Value of Stochastic Solution based on two stage model
 
-vss_calc = True
-evpi_calc = True
+vss_calc = False
+evpi_calc = False
 vss_ts_calc = False   
 ##############################################
 
@@ -111,10 +111,10 @@ show_heatmap = False   # Save heatmaps to figures for every decision variable
 show_boxplot = False   # Save boxplot to figures for every decision variable
 show_candlestick = False   # Save candlestick to figures for every decision variable
 #=============================================
-show_kpis = True   # Calculate and print KPIs for fulfillment, utilization, inventory ratio and weighted average price
+show_kpis = False   # Calculate and print KPIs for fulfillment, utilization, inventory ratio and weighted average price
 #=============================================
 time_limit = 900 # limit for each iteration
-seed = 20
+seed = 40
 iter = 11 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
@@ -170,23 +170,27 @@ Output = OutputConfig(show_sol,
     #   "REL_EVAL" -> Solve relaxed MS_linear, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
     #============================================
     #   "IH" -> iterative heuristic: iterates between solving pricing problem and inventory problem (features vector contains inventory levels from inventory problem)
+    #   "BENDERS" -> benders decomposition for the multistage linear problem (MS_linear).
     #============================================
     # Others:
     #   "TS_linear" -> Two stage version of MS_linear model.
     #   "TS_linear_affine" -> two-stage with linearized revenue AND affine pricing policy (x here-and-now).
-    #   "Relaxed_eval" ->  Relax MS_linear , extract and approximate cts policy to binary, evaluate in MS_linear with w fixed.
 #============================================
 
 # ==============================================================================
 # Ejecuciones (switch True / False)
 #============================================
-single = True # True for single instance
-comp_sweep = False
-prod_sweep = False
+single = False # True for single instance
+
+comp_sweep = True
+prod_sweep = True
+
 branching_sweep = False
 lead_time_sweep = False
 dem_sweep = False
-oos_sweep = False
+
+uncertainty_stack_sweep = True  
+bom_density_sweep = True
 #============================================
 
 
@@ -195,12 +199,13 @@ oos_sweep = False
 # ==============================================================================
 if single:
     run_configs = [
-        # RunConfig(Model="MS_linear", W_cts=False),
+        RunConfig(Model="MS_linear", W_cts=True),
         # RunConfig(Model="TS_linear", W_cts=False),
-        # # RunConfig(Model="MS_linear_affine", W_cts=False),
+        # RunConfig(Model="MS_linear_affine", W_cts=False),
         # RunConfig(Model="AF_EVAL"),
-        # RunConfig(Model="REL_EVAL"),
-        RunConfig(Model="IH",),
+        RunConfig(Model="REL_EVAL"),
+        # RunConfig(Model="IH",),
+        # RunConfig(Model="BENDERS",),
         # RunConfig(Model="AF_EVAL", local_search=True),
         # RunConfig(Model="REL_EVAL", local_search=True),
         # RunConfig(Model="IH", local_search=True),
@@ -216,17 +221,22 @@ if single:
 # ==============================================================================
 # BARRIDO PARAMÉTRICO (SENSITIVITY ANALYSIS SWEEP)
 # ==============================================================================
-# run_configs = [
-#     RunConfig(Model="MS_linear", W_cts=True),
-#     RunConfig(Model="AF_EVAL"),
-#     RunConfig(Model="REL_EVAL"),
-#     RunConfig(Model="IH"),
-# ]
+run_configs = [
+        RunConfig(Model="MS_linear", W_cts=True),
+        # RunConfig(Model="TS_linear", W_cts=False),
+        # # RunConfig(Model="MS_linear_affine", W_cts=False),
+        # RunConfig(Model="AF_EVAL"),
+        RunConfig(Model="REL_EVAL"),
+        # RunConfig(Model="IH",),
+        # RunConfig(Model="AF_EVAL", local_search=True),
+        # RunConfig(Model="REL_EVAL", local_search=True),
+        # RunConfig(Model="IH", local_search=True),
+    ]
 # ==============================================================================
 # COMPONENTS SWEEP
 # ==============================================================================
 if comp_sweep:
-    comps = [4,5,6,7,8,9,10]
+    comps = [3, 5, 8, 12, 18, 25, 35, 50, 70]
     for val in comps: 
 
         comp = val
@@ -252,7 +262,7 @@ if comp_sweep:
 # PRODUCTS SWEEP
 # ==============================================================================
 if prod_sweep:
-    prod = [3,4,5,6,7,8,9]
+    prod = [2, 3, 4, 6, 8, 10, 14, 20, 35]
     for val in prod:    
 
         prod = val
@@ -279,12 +289,12 @@ if prod_sweep:
 # ==============================================================================
 if branching_sweep:
     branching = [
-            [5,5,5,2,1,1,1],
-            [10,5,2,2,1,1,1],
-            [20,5,2,1,1,1,1],
-            [50,2,2,1,1,1,1],
-            [125,2,1,1,1,1,1],
-            ]
+        [10, 10, 1, 1, 1, 1, 1, 1],       # Lógica MS3 extendida a 8 etapas
+        [10, 10, 10, 1, 1, 1, 1, 1],      # Lógica MS4 extendida a 8 etapas (opcional, más robusta)
+        [10, 1, 1, 1, 1, 1, 1, 1],        # Lógica MP extendida a 8 etapas
+        [120, 1, 1, 1, 1, 1, 1, 1],       # Lógica TS_noS extendida a 8 etapas
+        [1, 1, 1, 1, 1, 1, 1, 1]          # Determinista a 8 etapas
+    ]
     i=0
     for val in branching:    
 
@@ -312,15 +322,6 @@ if branching_sweep:
 # ==============================================================================
 # LEAD TIMES SWEEP
 # ==============================================================================
-# run_configs = [
-#     RunConfig(Model="MS_linear", W_cts=True),
-#     # RunConfig(Model="REL_EVAL"),
-#     RunConfig(Model="AF_EVAL", phi_mode="eps"),
-#     RunConfig(Model="AF_EVAL", phi_mode="eps_delta"),
-#     RunConfig(Model="AF_EVAL", phi_mode="eps_lt"),
-#     RunConfig(Model="AF_EVAL", phi_mode="eps_delta_lt"),
-# ]
-
 if lead_time_sweep:
     lead_times = [2,3,4,5]
     for val in lead_times:    
@@ -366,51 +367,68 @@ if dem_sweep:
             
             _,_ = instances(cfg, tag="demand", param_name="demand", param_value=val)
 
-# run_configs = [
-#     RunConfig(Model="MS_linear", W_cts=True),
-#     # RunConfig(Model="REL_EVAL"),
-#     RunConfig(Model="AF_EVAL"),
-#     RunConfig(Model="AF_EVAL", oos_eval=True),
-# ]
+# ==============================================================================
+# UNCERTAINTY SWEEP
+# ==============================================================================
+if uncertainty_stack_sweep:
 
-# ==============================================================================
-# Out of Sample SWEEP
-# ==============================================================================
-# Out of Sample SWEEP (Análisis de Estabilidad In-Sample)
-# ==============================================================================
+    # Todos los niveles multiplican a 128 escenarios — solo cambia la forma
+    # del árbol y la varianza de demanda/lead time, no el tamaño del problema.
+    uncertainty_levels = [
+        {"lb_eps": 0.9, "ub_eps": 1.1, "std_delta": 2,  "ub_L": 2,}, 
+        {"lb_eps": 0.8, "ub_eps": 1.2, "std_delta": 3,  "ub_L": 3,}, 
+        {"lb_eps": 0.7, "ub_eps": 1.3, "std_delta": 5, "ub_L": 4,},  
+        {"lb_eps": 0.5, "ub_eps": 1.5, "std_delta": 10, "ub_L": 5,},  
+        {"lb_eps": 0.3, "ub_eps": 1.7, "std_delta": 20, "ub_L": 6,},  
+        {"lb_eps": 0.1, "ub_eps": 1.9, "std_delta": 40, "ub_L": 8,},  
+    ]
 
-if oos_sweep:
-    in_sample_branchings = [
-            [2,2,2,2,2,1,1],   # 32 escenarios (entrenamiento base)
-            # [2,2,2,2,2,2,2],   # 128 escenarios 
-            [4,2,2,2,2,2,1],   # 128 escenarios
-            [5,4,2,2,2,1,1],   # 160 escenarios
-            [10,5,2,2,1,1,1],  # 200 escenarios
-            ]
-    for val in in_sample_branchings:    
-        branching = val
-        scenarios = math.prod(branching)
-        
-        # El objeto ProblemSize inyecta la topología in-sample variante, y la topología OOS estática masiva
-        size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit, 
-                           None, oos_branching, oos_scenarios)
+    for i, lvl in enumerate(uncertainty_levels, start=1):
+
+        size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
         bom = BomConfig(min_use, max_use, other)
         costs = CostConfig(min_cost, max_cost, inv_factor, I0)
         price = PriceConfig(lb_price, ub_price, step_price)
+        demand = DemandConfig(a, b, lvl["lb_eps"], lvl["ub_eps"], mu_delta, lvl["std_delta"])
+        lead_times = LeadTimeConfig(lb_L, lvl["ub_L"], det)
+        Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis,
+                               vss_calc, evpi_calc, vss_ts_calc)
+
+        for run in run_configs:
+            current_size = copy.deepcopy(size)
+            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+            _,_ = instances(cfg, tag="uncertainty_stack", param_name="uncertainty_level", param_value=i)
+
+# ==============================================================================
+# BOM SWEEP
+# ==============================================================================
+if bom_density_sweep:   
+
+    # comp se sube para este sweep: con replace=True en bill_of_materials,
+    # si k se acerca a comp, la BOM generada termina con menos componentes
+    # distintos de los k pedidos (colisiones en el sorteo). Con comp=10
+    # aseguramos que k hasta 6 siga generando BOMs efectivamente densas.
+    comp_bom_sweep = 7
+
+    target_cost_per_product = 45.0   # ~ costo esperado actual (min_use=3, punto medio 12.5 * 3)
+    bom_density_levels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    for k in bom_density_levels:
+        avg_cost_i = target_cost_per_product / k
+        min_cost_i = max(5, round(avg_cost_i * 0.7 / 5) * 5)
+        max_cost_i = max(min_cost_i + 5, round(avg_cost_i * 1.3 / 5) * 5)
+
+        size = ProblemSize(inst, comp_bom_sweep, prod, stages, scenarios, branching, seed, time_limit)
+        bom = BomConfig(min_use=k, max_use=k, other=False)
+        costs = CostConfig(min_cost_i, max_cost_i, inv_factor, I0)
+        price = PriceConfig(lb_price, ub_price, step_price)
         demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
         lead_times = LeadTimeConfig(lb_L, ub_L, det)
-        Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
-                            vss_calc, evpi_calc, vss_ts_calc)
+        Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis,
+                               vss_calc, evpi_calc, vss_ts_calc)
 
-        for run_oos in run_configs:
-        # Activamos específicamente el flag oos_eval=True para que solver.py entre a la sección OOS
-        # run_oos = RunConfig(Model="AF_EVAL", oos_eval=True)
-        
+        for run in run_configs:
             current_size = copy.deepcopy(size)
-            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run_oos, Output, iter)
-        
-            # Cambiamos el tag para identificar fácilmente los resultados en el output
-            _,_ = instances(cfg, tag="oos_stability", param_name="in_sample_scenarios", param_value=scenarios)
+            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+            _,_ = instances(cfg, tag="bom_density", param_name="min_use_max_use", param_value=k)
 
-    branching = [2,2,2,2,2,2,2] # reset base value
-    scenarios = math.prod(branching)

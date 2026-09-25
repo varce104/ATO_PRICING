@@ -63,14 +63,21 @@ def build_and_solve_master(prod, stages, scenarios, pr, K_features, extended_phi
         m_master.addConstr(lambda_w[j, t, p, s] == rho[j, t, p] + gamma_phi)
 
     # Inyección de los Cortes de Benders históricos
-    for idx, (Z_k, lam_k, RC_k) in enumerate(past_cuts_data):
-        # NOTA: RC_k ya contiene la escala de probabilidad pi[s] porque Gurobi 
-        # extrae el dual directamente de la función objetivo esperada del subproblema ATO.
-        cut_expr = Z_k + gp.quicksum(
-            RC_k[(j, t, p, s)] * (lambda_w[j, t, p, s] - lam_k[(j, t, p, s)])
-            for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios))
-        )
-        m_master.addConstr(theta <= cut_expr, name=f"BendersCut_{idx}")
+    for idx, cut_data in enumerate(past_cuts_data):
+        if cut_data[0] == 'OPT':
+            _, Z_k, lam_k, RC_k = cut_data
+            cut_expr = Z_k + gp.quicksum(
+                RC_k[(j, t, p, s)] * (lambda_w[j, t, p, s] - lam_k[(j, t, p, s)])
+                for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios))
+            )
+            m_master.addConstr(theta <= cut_expr, name=f"BendersOptCut_{idx}")
+        elif cut_data[0] == 'FEAS':
+            _, f_const, Farkas_lam = cut_data
+            cut_expr = f_const + gp.quicksum(
+                Farkas_lam[(j, t, p, s)] * lambda_w[j, t, p, s]
+                for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios))
+            )
+            m_master.addConstr(cut_expr >= 0, name=f"BendersFeasCut_{idx}")
 
     t0 = time.time()
     m_master.optimize()
@@ -119,6 +126,15 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
     m_inv.setParam('BarHomogeneous', 1)
     m_inv.setParam('OutputFlag', 0)
 
+    # Configurar subproblema para permitir extracción de rayos de Farkas
+    m_inv.setParam('InfUnboundedInfo', 1)
+
+    # Crear restricciones de fijación explícitas (antes de iniciar el bucle)
+    fix_constrs = {}
+    for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
+        fix_constrs[(j, t, p, s)] = m_inv.addConstr(lambda_w_sub[j, t, p, s] == 0.0, name=f"fix_lam_{j}_{t}_{p}_{s}")
+    fix_constrs_set = set(fix_constrs.values())
+
     best_obj = -np.inf
     past_cuts_data = []
 
@@ -126,39 +142,49 @@ def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, 
         print(f"\n--- BENDERS ITERATION {iteration} ---\n")
 
         # --- A. SUBPROBLEMA ATO ---
-        # Fijar los lambdas actuales en las cotas del subproblema
+        # Actualizar el lado derecho (RHS) de las restricciones en lugar de los bounds
         for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
-            lambda_w_sub[j, t, p, s].LB = lam_current[(j, t, p, s)]
-            lambda_w_sub[j, t, p, s].UB = lam_current[(j, t, p, s)]
+            fix_constrs[(j, t, p, s)].RHS = lam_current[(j, t, p, s)]
 
         t0 = time.time()
         m_inv.optimize()
         solve_time += time.time() - t0
 
-        if m_inv.status != GRB.OPTIMAL:
-            print("\nSubproblema ATO infactible.\n")
+        if m_inv.status == GRB.INFEASIBLE:
+            print(" >>> ATO Subproblem Infeasible. Generating Feasibility Cut <<< ")
+            # 1. Extraer rayo dual para las variables acopladas
+            Farkas_lambda = {k: c.FarkasDual for k, c in fix_constrs.items()}
+            # 2. Calcular la constante del rayo dual para todas las demás restricciones
+            farkas_constant = sum(c.FarkasDual * c.RHS for c in m_inv.getConstrs() if c not in fix_constrs_set)
+            
+            past_cuts_data.append(('FEAS', farkas_constant, Farkas_lambda))
+            # Omitimos la convergencia de optimalidad porque no hay Z_ato válido
+
+        elif m_inv.status == GRB.OPTIMAL:
+            Z_ato = m_inv.objVal
+            print(f" >>> ATO Subproblem Obj (Z_ato): {Z_ato:.2f} <<< ")
+
+            if iteration > 1:
+                gap = theta_val - Z_ato
+                print(f"     Master Theta: {theta_val:.2f} | Gap: {gap:.2f}")
+                if gap <= tol or (Z_ato - best_obj <= tol and gap < 1.0):
+                    print(f"\nConvergence achieved at iteration: {iteration}")
+                    break
+            
+            best_obj = max(best_obj, Z_ato)
+
+            # Extraer las variables duales (.Pi) de las restricciones de fijación
+            RC_lambda = {k: c.Pi for k, c in fix_constrs.items()}
+            # Usar .copy() para no sobreescribir las referencias guardadas
+            past_cuts_data.append(('OPT', Z_ato, lam_current.copy(), RC_lambda))
+        else:
+            print(f"\nStatus desconocido ({m_inv.status}). Abortando.\n")
             return None, None, None, None, None, None, None, None, None
 
-        Z_ato = m_inv.objVal
-        print(f" >>> ATO Subproblem Obj (Z_ato): {Z_ato:.2f} <<< ")
-
-        # Verificar convergencia evaluando el Gap del Maestro en iteraciones previas
-        if iteration > 1:
-            gap = theta_val - Z_ato
-            print(f"     Master Theta: {theta_val:.2f} | Gap: {gap:.2f}")
-            if gap <= tol or (Z_ato - best_obj <= tol and gap < 1.0):
-                print(f"\nConvergence achieved at iteration: {iteration}")
-                break
+        # --- B. PROBLEMA MAESTRO DE PRECIOS ---
+        I_fixed = {(i, t, s): I_af[i, t, s].X for i, t, s in product(range(comp), range(stages), range(scenarios))} if m_inv.status == GRB.OPTIMAL else None
         
-        best_obj = max(best_obj, Z_ato)
-
-        # Extraer los Reduced Costs (gradientes/duales de lambda)
-        RC_lambda = {}
-        for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
-            RC_lambda[(j, t, p, s)] = lambda_w_sub[j, t, p, s].RC
-
-        # Guardar la información para el corte de esta iteración
-        past_cuts_data.append((Z_ato, lam_current, RC_lambda))
+        # Continuar con el resto de la lógica del maestro...
 
         # --- B. PROBLEMA MAESTRO DE PRECIOS ---
         # Extraer el inventario para actualizar phi
