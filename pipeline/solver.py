@@ -11,6 +11,7 @@ from sol_approach.twostage_affine import TS_linear_affine
 from sol_approach.iterative_heuristic import Iter_policy
 from sol_approach.local_search import local_search_first_improvement
 from sol_approach.out_of_sample import Affine_OOS_eval
+from sol_approach.benders import benders
 
 from uncertainty_analysis.sto_computation import uncertainty_analysis
 from output_config.results_output import export
@@ -95,8 +96,11 @@ def solve(cfg):
 
     elif Model == "IH":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, iterations = Iter_policy(
-            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
-            max_iter=cfg.iter, phi_mode=cfg.run.phi_mode)
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,phi_mode=cfg.run.phi_mode)
+
+    elif Model == "BENDERS":
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, iterations = benders(
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, phi_mode=cfg.run.phi_mode)
 
 #=====================================================================================================================================
     else:
