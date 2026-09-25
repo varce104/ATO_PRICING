@@ -115,7 +115,7 @@ show_kpis = False   # Calculate and print KPIs for fulfillment, utilization, inv
 #=============================================
 time_limit = 900 # limit for each iteration
 seed = 40
-iter = 11 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+iter = 3 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 #=============================================
 
@@ -180,7 +180,7 @@ Output = OutputConfig(show_sol,
 # ==============================================================================
 # Ejecuciones (switch True / False)
 #============================================
-single = False # True for single instance
+single = True # True for single instance
 
 comp_sweep = True
 prod_sweep = True
@@ -191,6 +191,7 @@ dem_sweep = False
 
 uncertainty_stack_sweep = True  
 bom_density_sweep = True
+pricing_sweep = True
 #============================================
 
 
@@ -202,7 +203,7 @@ if single:
         RunConfig(Model="MS_linear", W_cts=True),
         # RunConfig(Model="TS_linear", W_cts=False),
         # RunConfig(Model="MS_linear_affine", W_cts=False),
-        # RunConfig(Model="AF_EVAL"),
+        RunConfig(Model="AF_EVAL"),
         RunConfig(Model="REL_EVAL"),
         # RunConfig(Model="IH",),
         # RunConfig(Model="BENDERS",),
@@ -217,7 +218,6 @@ if single:
         instances(cfg)
 # ==============================================================================
 
-
 # ==============================================================================
 # BARRIDO PARAMÉTRICO (SENSITIVITY ANALYSIS SWEEP)
 # ==============================================================================
@@ -225,13 +225,17 @@ run_configs = [
         RunConfig(Model="MS_linear", W_cts=True),
         # RunConfig(Model="TS_linear", W_cts=False),
         # # RunConfig(Model="MS_linear_affine", W_cts=False),
-        # RunConfig(Model="AF_EVAL"),
+        RunConfig(Model="AF_EVAL"),
         RunConfig(Model="REL_EVAL"),
         # RunConfig(Model="IH",),
+        RunConfig(Model="BENDERS",),
         # RunConfig(Model="AF_EVAL", local_search=True),
         # RunConfig(Model="REL_EVAL", local_search=True),
         # RunConfig(Model="IH", local_search=True),
     ]
+# ==============================================================================
+
+
 # ==============================================================================
 # COMPONENTS SWEEP
 # ==============================================================================
@@ -432,3 +436,28 @@ if bom_density_sweep:
             cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
             _,_ = instances(cfg, tag="bom_density", param_name="min_use_max_use", param_value=k)
 
+# ==============================================================================
+# PRICING SWEEP
+# ==============================================================================
+if pricing_sweep:
+    price_steps = [10, 8, 5, 4, 2, 1]
+    for val in price_steps:    
+
+        step_price = val
+
+        size = ProblemSize(inst, comp, prod, stages, scenarios, branching, seed, time_limit)
+        bom = BomConfig(min_use, max_use, other)
+        costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+        price = PriceConfig(lb_price, ub_price, step_price)
+        demand = DemandConfig(a, b, lb_epsilon, ub_epsilon, mu_delta, std_delta)
+        lead_times = LeadTimeConfig(lb_L, ub_L, det)
+        Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                            vss_calc, evpi_calc, vss_ts_calc)
+
+        for run in run_configs:
+            current_size = copy.deepcopy(size)
+            cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
+            
+            _,_ = instances(cfg, tag="price_range", param_name="step_price", param_value=val)
+
+    step_price = 5 # reset base value

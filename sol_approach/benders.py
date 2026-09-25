@@ -72,7 +72,7 @@ def build_and_solve_master(prod, stages, scenarios, pr, branching_structure, pas
     w_new = {(j, t, p, s): round(w[j, t, p, s].X) 
              for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios))}
     
-    return theta.X, w_new, (t1 - t0)
+    return theta.X, m_master.ObjBound, w_new, (t1 - t0)
 
 
 
@@ -105,7 +105,9 @@ def benders(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C
     m_sub.setParam('OutputFlag', 0)
 
     best_obj = -np.inf
+    best_w = w_current.copy()
     past_cuts_data = []
+    ub = np.inf
 
     for iteration in range(1, max_iter + 1):
         print(f"\n--- BENDERS ITERATION {iteration} ---\n")
@@ -127,22 +129,10 @@ def benders(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C
         Z_ato = m_sub.objVal
         print(f" >>> ATO Subproblem Obj (Z_ato): {Z_ato:.2f} <<< ")
 
-        # Criterio de Convergencia
-        # if iteration > 1:
-        #     gap = theta_val - Z_ato
-        #     print(f"     Master Theta: {theta_val:.2f} | Gap: {gap:.2f}")
-        #     if gap <= tol or (Z_ato - best_obj <= tol and gap < 0.5):
-        #         print(f"\nConvergence achieved at iteration: {iteration}")
-        #         break
-        
-        # best_obj = max(best_obj, Z_ato)
-        if iteration > 1:
-            best_obj = max(best_obj, Z_ato)
-            gap = theta_val - best_obj
-            print(f"     Master Theta: {theta_val:.2f} | Gap: {gap:.2f}")
-            if gap <= tol or (Z_ato - best_obj <= tol and gap < 0.5):
-                print(f"\nConvergence achieved at iteration: {iteration}")
-                break
+
+        if Z_ato > best_obj:
+            best_obj = Z_ato
+            best_w = w_current.copy()
 
         # Extraer los Reduced Costs (gradientes de w)
         RC_w = {}
@@ -153,7 +143,7 @@ def benders(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C
         past_cuts_data.append((Z_ato, w_current, RC_w))
 
         # --- B. PROBLEMA MAESTRO DE PRECIOS ---
-        theta_val, w_current, t_master = build_and_solve_master(
+        theta_val, obj_bound, w_new, t_master = build_and_solve_master(
             prod, stages, scenarios, pr, branching_structure, past_cuts_data
         )
         
@@ -162,13 +152,30 @@ def benders(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C
             return None, None, None, None, None, None, None, None, None
 
         solve_time += t_master
+        ub = min(ub, obj_bound)                       # el UB del maestro es monótono no-creciente
+        rel_gap = (ub - best_obj) / max(1.0, abs(best_obj))
 
-        print(f" >>> Master Problem Solved. Theta projected limit: {theta_val:.2f} <<< ")
+        print(f" >>> Master UB: {ub:.2f} | Best Z: {best_obj:.2f} | rel gap: {rel_gap:.4%} <<< ")
         print(f"Effective Solve Time after iteration {iteration}: {solve_time:.2f} seconds")
 
-    # --- Evaluación final y Retorno ---
+        if w_new == w_current:
+            print("\nMaster repitió el mismo punto: sin más progreso posible con los cortes actuales.")
+            break
+
+        w_current = w_new
+
+        if rel_gap <= tol:
+            print(f"\nConvergence achieved at iteration: {iteration}")
+            break
+    else:
+        print(f"\n[!] max_iter ({max_iter}) alcanzado sin cerrar el gap. Devolviendo el mejor punto evaluado.")
+
     print("\n------ Benders Finished. Preparing Return Object ------\n")
 
-    # Como Solver espera un modelo que se pueda consultar con .X (binario en w_vars),
-    # devolvemos el modelo subproblema con las cotas finales fijadas a la solución óptima binaria
+    for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
+        w_sub[j, t, p, s].LB = best_w[(j, t, p, s)]
+        w_sub[j, t, p, s].UB = best_w[(j, t, p, s)]
+    m_sub.optimize()
+    solve_time += m_sub.Runtime
+
     return m_sub, x_sub, w_sub, y_sub, I_sub, A, D_term, solve_time, iteration
