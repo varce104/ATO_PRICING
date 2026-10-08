@@ -53,6 +53,7 @@ class RunConfig:
     phi_mode: str = "eps_delta"   # "eps" | "eps_delta" | "eps_lt" | "eps_delta_lt"
     local_search: bool = False # True if local search applied to MS_linear, with AF_EVAL initial solution (or other)
     oos_eval: bool = False    # True if out-of-sample evaluation of MS_linear with AF_EVAL solution
+    max_iter: int = 1
 
 @dataclass
 class OutputConfig:

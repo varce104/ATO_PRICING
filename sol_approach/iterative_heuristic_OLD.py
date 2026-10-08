@@ -72,7 +72,7 @@ def revenue_max(prod, stages, scenarios, pr, price, D_term, pi, extended_phi, K_
 
 
 def Iter_policy(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
-                branching_structure, I0, max_iter=15, tol=1e-3, phi_mode="eps_delta"):
+                branching_structure, I0, max_iter=50, tol=1e-3, phi_mode="eps_delta"):
     comp, prod, pr = len(A), len(A[0]), len(price)
     import time
 
