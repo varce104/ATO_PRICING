@@ -166,6 +166,9 @@ Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, sh
     #   "REL_EVAL" -> Solve relaxed MS_linear, extract and approximate affine policy to binary, evaluate in MS_linear with w fixed.
     #============================================
     #   "IH" -> iterative heuristic: iterates between solving pricing problem and inventory problem (features vector contains inventory levels from inventory problem)
+    #   "IH_SC" -> iterative heuristic with strong cuts
+    #   "IH_REL" -> iterative heuristic with two phase relaxation (1st phase relax until convergence, 2nd stage normal benders with relaxed cuts)
+    #============================================
     #   "BENDERS" -> benders decomposition for the multistage linear problem (MS_linear).
     #   "BEDNERS_SC" -> benders decomposition for the multistage linear problem (MS_linear) with strong cuts (Papadakos, 2008).
     #   "BENDERS_REL" -> benders decomposition for the multistage linear problem (MS_linear) with relaxed MP on first iteration.
@@ -200,17 +203,15 @@ if single:
     run_configs = [
         # RunConfig(Model="MS_linear", W_cts=True),
         RunConfig(Model="MS_linear", W_cts=False),
-        # RunConfig(Model="MS_linear_affine", W_cts=False),
         # RunConfig(Model="AF_EVAL"),
-        RunConfig(Model="REL_EVAL",),
-        RunConfig(Model="BENDERS", max_iter=150,),
-        RunConfig(Model="BENDERS_SC",max_iter=150),
-        RunConfig(Model="BENDERS_REL",max_iter=150),
-        # RunConfig(Model="IH",max_iter=15),
-        # RunConfig(Model="AF_EVAL", local_search=True),
-        # RunConfig(Model="REL_EVAL", local_search=True),     
-        # RunConfig(Model="IH", local_search=True),
-    ]
+        # RunConfig(Model="REL_EVAL",),
+        # RunConfig(Model="BENDERS", max_iter=250,),
+        # RunConfig(Model="BENDERS_SC",max_iter=250),
+        # RunConfig(Model="BENDERS_REL",max_iter=250),
+        # RunConfig(Model="IH",max_iter=50),
+        # RunConfig(Model="IH_SC",max_iter=50),
+        # RunConfig(Model="IH_REL",max_iter=250),
+        ]
 
     for run in run_configs:
         current_size = copy.deepcopy(size)
