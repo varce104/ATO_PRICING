@@ -8,7 +8,7 @@ from models.linealization_prop import MS_linear, TS_linear
 from sol_approach.affine_funct_app import MS_linear_affine, MS_affine_cts
 from sol_approach.price_app_eval import Affine_eval, Relaxed_eval
 from sol_approach.twostage_affine import TS_linear_affine
-from sol_approach.iterative_heuristic import Iter_policy
+from sol_approach.iterative_heuristic import Iter_policy, Iter_policy_strong, Iter_policy_relaxed
 # from sol_approach.iterative_heuristic_OLD import Iter_policy
 
 from sol_approach.local_search import local_search_first_improvement
@@ -96,23 +96,34 @@ def solve(cfg):
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         # Relaxed_eval no usa phi (resuelve MS_linear relajado en w, no la política afín) — sin cambios
 
-
+#=====================================================================================================================================
+# iterative heuristic approaches
+#=====================================================================================================================================
     elif Model == "IH":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, iterations = Iter_policy(
-            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=max_iter, phi_mode=cfg.run.phi_mode,)
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=max_iter, phi_mode=cfg.run.phi_mode, time_limit=time_limit,)
 
+    elif Model == "IH_SC":
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, iterations = Iter_policy_strong(
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=max_iter, phi_mode=cfg.run.phi_mode, time_limit=time_limit,)
+
+    elif Model == "IH_REL":
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, iterations = Iter_policy_relaxed(
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=max_iter, phi_mode=cfg.run.phi_mode, time_limit=time_limit,)
+#=====================================================================================================================================
+# Benders approaches
+#=====================================================================================================================================
     elif Model == "BENDERS":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, iterations = benders(
-            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=max_iter,)
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=max_iter, time_limit=time_limit,)
 
     elif Model == "BENDERS_SC":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, iterations = benders(
-            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=max_iter, strong_cuts=True)
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=max_iter, strong_cuts=True, time_limit=time_limit,)
 
     elif Model == "BENDERS_REL":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, iterations = benders_rel(
-            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=max_iter,)
-        
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, max_iter=max_iter, time_limit=time_limit,)
 #=====================================================================================================================================
     else:
         print("\nWrong input, try again...")
