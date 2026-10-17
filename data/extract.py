@@ -3,6 +3,7 @@ import numpy as np
 import gurobipy as gp
 from data.generator import epsilon_ms, delta_ms, lead_times_ms, build_scenario_groups
 from data.params import parametros, bill_of_materials, price_set
+from data.demand import demand_params
 
 def extract_params(cfg):
     
@@ -15,6 +16,12 @@ def extract_params(cfg):
     
     price, a, b, I0 = price_set(cfg.size.inst, cfg.demand.a, cfg.demand.b,
                                  cfg.price.lb_price, cfg.price.ub_price, cfg.price.step_price)
+
+    literature = cfg.size.inst in ("Oh_et_al_1", "Oh_et_al_2", "Oh_et_al_3")
+    a, b = demand_params(prod, a, b,
+                         None if literature else cfg.demand.a_range,
+                         None if literature else cfg.demand.b_range,
+                         seed=cfg.size.seed, price_lb=min(price))
     
     mult = epsilon_ms(cfg.size.inst, cfg.size.stages, cfg.size.scenarios, cfg.size.branching,
                        cfg.size.seed, cfg.demand.lb_epsilon, cfg.demand.ub_epsilon)
@@ -25,10 +32,8 @@ def extract_params(cfg):
     L = lead_times_ms(cfg.size.inst, comp, cfg.size.stages, cfg.size.scenarios, cfg.size.branching,
                        cfg.size.seed, cfg.lead_times.lb_L, cfg.lead_times.ub_L, cfg.lead_times.det)
 
-    if I0 is None:
-        I0 = [0] * comp
-    else:
-        I0 = [sum((a - b * I0)*A[i][j] for j in range(prod)) for i in range(comp)]
+    p_ref = I0  # price_set devuelve aquí el precio de referencia (máx. de la grilla), no un inventario
+    I0 = [sum(max(0.0, a[j] - b[j] * p_ref) * A[i][j] for j in range(prod)) for i in range(comp)]
 
     # Si la búsqueda local está activada, construimos el árbol de escenarios.
     # Usamos las variables stages, scenarios y branching de cfg.size

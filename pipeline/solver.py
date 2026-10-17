@@ -1,32 +1,20 @@
-from data.generator import epsilon_ms, delta_ms, lead_times_ms
-from data.params import parametros, bill_of_materials, price_set
 from data.extract import extract_params
 
 from models.multistage import Multistage_problem
 from models.linealization_prop import MS_linear, TS_linear
 
-from sol_approach.affine_funct_app import MS_linear_affine, MS_affine_cts
+from sol_approach.affine_funct_app import MS_linear_affine, MS_affine_cts, TS_linear_affine
 from sol_approach.price_app_eval import Affine_eval, Relaxed_eval
-from sol_approach.twostage_affine import TS_linear_affine
 from sol_approach.iterative_heuristic import Iter_policy, Iter_policy_strong, Iter_policy_relaxed
-# from sol_approach.iterative_heuristic_OLD import Iter_policy
-
 from sol_approach.local_search import local_search_first_improvement
-from sol_approach.out_of_sample import Affine_OOS_eval
 from sol_approach.benders import benders, benders_rel
+from sol_approach.rolling_horizon import Rolling_horizon
 
 from uncertainty_analysis.sto_computation import uncertainty_analysis
 from output_config.results_output import export
-from output_config.lambda_export import fix_w_from_lambda
 
-import pandas as pd
-import numpy as np
-from itertools import product
 import time
-import gurobipy as gp
 from gurobipy import GRB
-
-
 
 def solve(cfg):
     # Único punto donde se toca cfg — el resto de la función queda igual que antes
@@ -46,7 +34,6 @@ def solve(cfg):
     show_boxplot = cfg.Output.show_boxplot
     show_candlestick = cfg.Output.show_candlestick
     show_kpis = cfg.Output.show_kpis
-    local_search = cfg.run.local_search
     
     if inst is not None:
         comp = len(A); prod = len(A[0])
@@ -56,11 +43,15 @@ def solve(cfg):
     rho=0; gamma=0; K_features=0
     iterations=None
 
+#=====================================================================================================================================
+# Non-linear ATO pricing model
+#=====================================================================================================================================
     if Model == "MS": #Non-linear model
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = Multistage_problem(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
-            
-
+#=====================================================================================================================================
+# Linearized ATO pricing model (MS and 2S)
+#=====================================================================================================================================
     elif Model == "MS_linear": # Linear model (base model)
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = MS_linear(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, W_cts)
@@ -68,8 +59,27 @@ def solve(cfg):
     elif Model == "TS_linear": # Two stage version of MS_linear
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = TS_linear(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, W_cts)
+#=====================================================================================================================================
+# Rolling Horizon for MS_linear
+#=====================================================================================================================================
+    elif Model == "RH":
+        # m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Rolling_horizon(
+        #     seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
+        #     horizon=cfg.run.rh_horizon, fix_x=cfg.run.rh_fix_x,
+        #     mip_gap=cfg.run.rh_mip_gap, sub_time_limit=cfg.run.rh_sub_time)
 
-
+        sampling = dict(inst=inst,
+                        lb_eps=cfg.demand.lb_epsilon, ub_eps=cfg.demand.ub_epsilon,
+                        mu=cfg.demand.mu_delta, std=cfg.demand.std_delta,
+                        lb_L=cfg.lead_times.lb_L, ub_L=cfg.lead_times.ub_L)
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Rolling_horizon(
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
+            horizon=cfg.run.rh_horizon, fix_x=cfg.run.rh_fix_x,
+            mip_gap=cfg.run.rh_mip_gap, sub_time_limit=cfg.run.rh_sub_time,
+            resample=cfg.run.rh_resample, sampling=sampling)
+#=====================================================================================================================================
+# LDR pricing policy approach for MS_linear and TS_linear
+#=====================================================================================================================================
     elif Model == "MS_linear_affine":
         if W_cts:
             m, x_vars, w_vars, y_vars, I_vars, A, D_term, rho, gamma, K_features = MS_affine_cts(
@@ -84,8 +94,9 @@ def solve(cfg):
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, _, _ = TS_linear_affine(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, I0,
             phi_mode=cfg.run.phi_mode)
-
-
+#=====================================================================================================================================
+# Policy evaluation for MS_linear and TS_linear (LDR and binary relaxation)
+#=====================================================================================================================================
     elif Model == "AF_EVAL":
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time, rho_opt, Gamma_opt = Affine_eval(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
@@ -95,7 +106,6 @@ def solve(cfg):
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Relaxed_eval(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0)
         # Relaxed_eval no usa phi (resuelve MS_linear relajado en w, no la política afín) — sin cambios
-
 #=====================================================================================================================================
 # iterative heuristic approaches
 #=====================================================================================================================================
@@ -144,13 +154,13 @@ def solve(cfg):
 #=====================================================================================================================================
 #   Gurobi Parameters:
     m.setParam('TimeLimit', time_limit)
-    m.setParam('OutputFlag', 1)
-    m.setParam('BarHomogeneous', 1)   
+    m.setParam('OutputFlag', 1) 
+    m.setParam('BarHomogeneous', 1)    # homogeneous barrier algorithm
     # m.setParam('Crossover', 1)       # fuerza crossover a solución de vértice
     # m.setParam('BarConvTol', 1e-9)   # tolerancia de convergencia más estricta
     # m.setParam("MIPGap", 5e-4)       # Gap tol: 0.05% // Gurobi base tol: 0.01%/1e-4
-    # m.Params.NonConvex = 2
-    m.setParam('Threads', 1)
+    # m.Params.NonConvex = 2           # Allows non-convex quadratic constraints (for MS_linear_affine)
+    m.setParam('Threads', 1)           # Use single thread for reproducibility (Gurobi uses multiple threads by default)
 #=====================================================================================================================================
     m.optimize() # ¡Where magic happens! (or not)
 #=====================================================================================================================================
@@ -188,57 +198,6 @@ def solve(cfg):
         bestbd = m.objBound 
         gap = 0.0
 #=====================================================================================================================================
-    # OUT-OF-SAMPLE (OOS) SECTION
-    if m.status == GRB.OPTIMAL and getattr(cfg.run, 'oos_eval', False) and Model == "AF_EVAL":
-        print("\n--- Iniciando evaluación Out-of-Sample (OOS) ---")
-
-        oos_start = time.time()
-
-        oos_seed = seed + 1000
-        oos_branching = cfg.size.oos_branching
-        oos_scenarios = cfg.size.oos_scenarios
-
-        # 1. Generamos los tensores de incertidumbre respetando la estructura de branching OOS
-        ypsilon_oos = epsilon_ms(inst, stages, oos_scenarios, oos_branching, oos_seed,
-                                  cfg.demand.lb_epsilon, cfg.demand.ub_epsilon)
-        delta_oos = delta_ms(inst, prod, stages, oos_scenarios, oos_branching, oos_seed,
-                              cfg.demand.mu_delta, cfg.demand.std_delta)
-
-        if det:
-            L_oos = L
-        else:
-            L_oos = lead_times_ms(inst, comp, stages, oos_scenarios, oos_branching, oos_seed,
-                                   cfg.lead_times.lb_L, cfg.lead_times.ub_L, det)
-
-        # 2. Probabilidades reconstruidas para el tamaño del árbol OOS (uniforme)
-        pi_oos = [1.0 / oos_scenarios] * oos_scenarios
-
-        # 3. Rollout de la política afín sobre el árbol OOS
-        m_oos, x_oos, w_oos, y_oos, I_oos, A_oos, D_oos = Affine_OOS_eval(
-            oos_seed, stages, oos_scenarios, A, price, L_oos, det,
-            ypsilon_oos, delta_oos, a, b, C, H, pi_oos, oos_branching, I0,
-            rho_opt, Gamma_opt, phi_mode=cfg.run.phi_mode
-        )
-
-        m_oos.setParam('TimeLimit', time_limit)
-        m_oos.setParam('OutputFlag', 1)
-        m_oos.optimize()
-
-        oos_time = time.time() - oos_start
-        solve_time += oos_time
-
-        if m_oos.status == GRB.OPTIMAL:
-            incumbent = m_oos.objVal
-            bestbd = m_oos.objBound
-            gap = 0.0
-            m, x_vars, w_vars, y_vars, I_vars, D_term = m_oos, x_oos, w_oos, y_oos, I_oos, D_oos
-            scenarios = oos_scenarios
-            pi = pi_oos
-            mult = ypsilon_oos
-            add = delta_oos
-        else:
-            print("Evaluación OOS fallida o infactible.")
-#=====================================================================================================================================
 
     if m.status == GRB.OPTIMAL:
         incumbent = m.objVal
@@ -264,6 +223,11 @@ def solve(cfg):
     if Model in ("BENDERS", "BENDERS_SC", "BENDERS_REL",) and hasattr(m, "_benders_lb"):
         incumbent = m._benders_lb
         bestbd    = m._benders_ub
+        gap       = max(0.0, (bestbd - incumbent) / max(1.0, abs(incumbent)))
+
+    if Model in ("IH", "IH_SC", "IH_REL") and hasattr(m, "_ih_lb"):
+        incumbent = m._ih_lb
+        bestbd    = m._ih_ub
         gap       = max(0.0, (bestbd - incumbent) / max(1.0, abs(incumbent)))
 
     opt_time = m.Runtime + solve_time

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 
 @dataclass
 class ProblemSize:
@@ -12,8 +12,6 @@ class ProblemSize:
     seed: int;                  # Seed
     time_limit: int             # Runtime limit
     scenario_groups: Optional[Dict[int, List[List[int]]]] = None
-    oos_branching: Optional[List[int]] = None  # Params OOS
-    oos_scenarios: Optional[int] = None
 
 @dataclass
 class BomConfig:
@@ -36,9 +34,11 @@ class PriceConfig:
 
 @dataclass
 class DemandConfig:
-    a: float; b: float;                     # Linear demand function 
+    a: any; b: any;                     # Linear demand function 
     lb_epsilon: float; ub_epsilon: float    # Mult stochastic component
     mu_delta: float; std_delta: float       # Add sto0chastic component
+    a_range: Optional[Tuple[float, float]] = None   # si se define: a_j ~ U[range], ignora `a`
+    b_range: Optional[Tuple[float, float]] = None
 
 @dataclass
 class LeadTimeConfig:
@@ -54,6 +54,12 @@ class RunConfig:
     local_search: bool = False # True if local search applied to MS_linear, with AF_EVAL initial solution (or other)
     oos_eval: bool = False    # True if out-of-sample evaluation of MS_linear with AF_EVAL solution
     max_iter: int = 1
+    # Rolling horizon parameters
+    rh_horizon: int = 3
+    rh_fix_x: bool = True       # True: evalúa la política RH completa; False: solo fija w (comparable con AF_EVAL)
+    rh_mip_gap: float = 1e-3
+    rh_sub_time: int = 60       # límite por ventana
+    rh_resample: bool = False
 
 @dataclass
 class OutputConfig:
@@ -68,6 +74,14 @@ class OutputConfig:
 
 @dataclass
 class ExperimentConfig:
-    size: ProblemSize; bom: BomConfig; costs: CostConfig
-    price: PriceConfig; demand: DemandConfig; lead_times: LeadTimeConfig
-    run: RunConfig; Output: OutputConfig; iter: int = 1
+    size: ProblemSize; 
+    bom: BomConfig; 
+    costs: CostConfig
+    price: PriceConfig; 
+    demand: DemandConfig; 
+    lead_times: LeadTimeConfig
+    run: RunConfig; 
+    Output: OutputConfig; 
+    iter: int = 1
+
+    

@@ -1,4 +1,16 @@
 import numpy as np
+from data.demand import demand_expr
+
+def reconstruct_demand(price_eff, ypsilon, delta, a, b):
+    prod, time, scenarios = price_eff.shape
+    ypsilon = np.array(ypsilon)                                # (S, T)
+    a = np.broadcast_to(np.asarray(a, dtype=float), (prod,))   # tolera escalar
+    b = np.broadcast_to(np.asarray(b, dtype=float), (prod,))
+    D_eff = np.zeros((prod, time, scenarios))
+    for j in range(prod):
+        delta_j = np.array([[delta[s][j][t] for t in range(time)] for s in range(scenarios)])
+        D_eff[j] = demand_expr(ypsilon, a[j], b[j], price_eff[j].T, delta_j).T
+    return np.clip(D_eff, 0.0, None)
 
 def calculate_global_kpis(x_val, price_eff, y_val, I_val, A, mult, add, a, b, pi, I0):
     """
@@ -29,13 +41,15 @@ def calculate_global_kpis(x_val, price_eff, y_val, I_val, A, mult, add, a, b, pi
 
     # 1. Reconstrucción vectorizada de la demanda real (D_eff)
     # Replicamos la misma lógica segura implementada previamente en fulfillment.py
-    D_eff = np.zeros((prod, time, scenarios))
-    for j in range(prod):
-        # Transponemos para que las operaciones calcen con (scenarios, time)
-        delta_j = np.array([[delta[s][j][t] for t in range(time)] for s in range(scenarios)])
-        D_eff[j] = (ypsilon * (a - b * price_eff[j].T) + delta_j).T
+    # D_eff = np.zeros((prod, time, scenarios))
+    # for j in range(prod):
+    #     # Transponemos para que las operaciones calcen con (scenarios, time)
+    #     delta_j = np.array([[delta[s][j][t] for t in range(time)] for s in range(scenarios)])
+    #     D_eff[j] = (ypsilon * (a - b * price_eff[j].T) + delta_j).T
         
-    D_eff = np.clip(D_eff, 0.0, None)  # Previene demandas negativas por precios muy altos
+    # D_eff = np.clip(D_eff, 0.0, None)  # Previene demandas negativas por precios muy altos
+
+    D_eff = reconstruct_demand(price_eff, mult, add, a, b)
 
     # 2. Agrupación y cálculo de Valores Esperados (Expected Values)
     # Las sumatorias colapsan primero en prod y time (axis=(0,1)), dejando un array 1D
