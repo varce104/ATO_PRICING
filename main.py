@@ -203,6 +203,8 @@ dem_sweep = False
 uncertainty_stack_sweep = False  
 bom_density_sweep = False
 pricing_sweep = False
+
+demand_scale_sweep = False
 #============================================
 
 
@@ -211,16 +213,20 @@ pricing_sweep = False
 # ==============================================================================
 if single:
     run_configs = [
-        # RunConfig(Model="MS_linear", W_cts=True),
-        RunConfig(Model="MS_linear", W_cts=False),
+        RunConfig(Model="MS_linear", W_cts=True),
+        # RunConfig(Model="MS_linear", W_cts=False),
         RunConfig(Model="RH", rh_horizon=3, rh_sub_time=120, rh_resample=True),
+        # RunConfig(Model="RH", rh_method="AF_EVAL", rh_horizon=3, rh_sub_time=120, 
+        #         phi_mode="eps_delta",      # Modo de construcción de features
+        #         rh_resample=True,          # O False, dependiendo si quieres nuevo sampling en cada ventana
+        #         ),
         # RunConfig(Model="AF_EVAL"),
         RunConfig(Model="REL_EVAL",),
         # RunConfig(Model="BENDERS", max_iter=250,),
-        # RunConfig(Model="BENDERS_SC",max_iter=250,),
+        RunConfig(Model="BENDERS_SC",max_iter=250,),
         # RunConfig(Model="BENDERS_REL",max_iter=450,),
         # RunConfig(Model="IH",max_iter=50,),
-        # RunConfig(Model="IH_SC",max_iter=250,),
+        RunConfig(Model="IH_SC",max_iter=250,),
         # RunConfig(Model="IH_REL",max_iter=450,),
         ]
 
@@ -272,8 +278,6 @@ if comp_sweep:
             
             _,_ = instances(cfg, tag="comp", param_name="comp", param_value=val)
 
-    comp = 5 # reset base value
-
 # ==============================================================================
 # PRODUCTS SWEEP
 # ==============================================================================
@@ -297,8 +301,6 @@ if prod_sweep:
             cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
             
             _,_ = instances(cfg, tag="prod", param_name="prod", param_value=val)
-
-    prod = 4 # reset base value
 
 # ==============================================================================
 # BRANCHING SWEEP
@@ -332,9 +334,6 @@ if branching_sweep:
             
             _,_ = instances(cfg, tag="branching", param_name="branching", param_value=i)
 
-    branching = [2,2,2,2,2,2,2] # reset base value
-    scenarios = math.prod(branching)   # 128 scenarios
-
 # ==============================================================================
 # LEAD TIMES SWEEP
 # ==============================================================================
@@ -358,8 +357,6 @@ if lead_time_sweep:
             cfg = ExperimentConfig(current_size, bom, costs, price, demand, lead_times, run, Output, iter)
             
             _,_ = instances(cfg, tag="lead_times", param_name="lead_times", param_value=val)
-
-    ub_L = 2 # reset base value
 
 # ==============================================================================
 # DEMAND SHOCK SWEEP
@@ -472,4 +469,59 @@ if pricing_sweep:
             
             _,_ = instances(cfg, tag="price_range", param_name="step_price", param_value=val)
 
-    step_price = 5 # reset base value
+
+# ==============================================================================
+# PRUEBAS DE DEMANDA Y ESCALA (FASES 1, 2 Y 3)
+# ==============================================================================
+if demand_scale_sweep:
+    # Seleccionamos aislar la comparación entre MS_linear (relajado continuo) y REL_EVAL
+    run_configs_eval = [
+        RunConfig(Model="MS_linear", W_cts=True),
+        RunConfig(Model="REL_EVAL")
+    ]
+
+    # Definición de las 3 fases del testeo
+    fases = [
+        # Fase 1: Línea base homogénea (2 productos)
+        {"fase": 1, "comp": 3, "prod": 2, "a": 150, "b": 1.6, "a_range": None, "b_range": None},
+        
+        # Fase 2: Asimetría de Demanda (2 productos con vectores)
+        {"fase": 2, "comp": 3, "prod": 2, "a": [150, 120], "b": [1.6, 2.0], "a_range": None, "b_range": None},
+        
+        # Fase 3: Impacto a Gran Escala (Instancia 5x4 con rangos aleatorios)
+        {"fase": 3, "comp": 5, "prod": 4, "a": 150, "b": 1.6, "a_range": (80, 120), "b_range": (1.2, 2.0)}
+    ]
+
+    for config_fase in fases:
+        print(f"\n--- Iniciando Fase {config_fase['fase']} de Pruebas de Demanda ---")
+        
+        current_comp = config_fase["comp"]
+        current_prod = config_fase["prod"]
+        
+        # Actualizamos el tamaño del problema según la fase
+        size = ProblemSize(inst, current_comp, current_prod, stages, scenarios, branching, seed, time_limit)
+        bom = BomConfig(min_use, max_use, other)
+        costs = CostConfig(min_cost, max_cost, inv_factor, I0)
+        price = PriceConfig(lb_price, ub_price, step_price)
+        
+        # Inyectamos la función de demanda correspondiente (escalar, vector o rango)
+        if config_fase["a_range"] is not None:
+            current_demand = DemandConfig(config_fase["a"], config_fase["b"], 
+                                          lb_epsilon, ub_epsilon, mu_delta, std_delta, 
+                                          a_range=config_fase["a_range"], b_range=config_fase["b_range"])
+        else:
+            current_demand = DemandConfig(config_fase["a"], config_fase["b"], 
+                                          lb_epsilon, ub_epsilon, mu_delta, std_delta)
+            
+        lead_times = LeadTimeConfig(lb_L, ub_L, det)
+        
+        # Mantenemos activados los KPIs y visualizaciones (heatmap/boxplot) definidos arriba
+        Output = OutputConfig(show_sol, show_heatmap, show_boxplot, show_candlestick, show_kpis, 
+                              vss_calc, evpi_calc, vss_ts_calc)
+
+        for run in run_configs_eval:
+            current_size = copy.deepcopy(size)
+            cfg = ExperimentConfig(current_size, bom, costs, price, current_demand, lead_times, run, Output, iter)
+            
+            # El tag permite que generator.py y los exports no sobrescriban los archivos de cada fase
+            _,_ = instances(cfg, tag=f"demanda_fase_{config_fase['fase']}", param_name="fase", param_value=config_fase['fase'])

@@ -1,3 +1,4 @@
+import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
 import random
@@ -7,7 +8,7 @@ from data.phi_features import build_phi
 
 
 def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
-                      branching_structure, I0=None, phi_init=None, K_feat=None, lambda_fix=False,phi_mode="eps_delta"):
+                      branching_structure, I0=None, phi_init=None, K_feat=None, lambda_fix=False,phi_mode="eps_delta", pipeline=None):
     random.seed(seed)
     comp, prod = len(A), len(A[0])
     pr = len(price)
@@ -44,6 +45,10 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
     m.addConstrs(y[j,t,s] == gp.quicksum(y_bar[j,t,p,s] for p in range(pr)) 
                  for j in range(prod) for t in range(time) for s in range(scenarios))
 
+    I0_vec = list(I0) if I0 is not None else [0.0] * comp
+    pipeline_cum = (np.cumsum(np.array(pipeline, dtype=float), axis=1)
+                    if pipeline is not None else np.zeros((comp, time)))
+
     if L_det:
         alpha = {} 
         for i in range(comp):
@@ -55,16 +60,6 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
                     else:
                         alpha[i, tau, t] = 0
 
-        if I0 is not None:
-            m.addConstrs(
-            (gp.quicksum(y[j, tt, s] * A[i][j] for j in range(prod) for tt in range(t + 1)) + I[i, t, s] - I0[i] ==
-            gp.quicksum(alpha[i, tau, t] * x[i, tau, s] for tau in range(time)))
-            for i in range(comp) for t in range(time) for s in range(scenarios))
-        else:
-            m.addConstrs(
-            (gp.quicksum(y[j, tt, s] * A[i][j] for j in range(prod) for tt in range(t + 1)) + I[i, t, s] ==
-            gp.quicksum(alpha[i, tau, t] * x[i, tau, s] for tau in range(time)))
-            for i in range(comp) for t in range(time) for s in range(scenarios))
     else:
         alpha = {}
         for i in range(comp):
@@ -76,16 +71,13 @@ def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, 
                             alpha[i, tau, t, s] = 1
                         else:
                             alpha[i, tau, t, s] = 0
-        if I0 is not None:
-            m.addConstrs(
-            (gp.quicksum(y[j, tt, s] * A[i][j] for j in range(prod) for tt in range(t + 1)) + I[i, t, s] - I0[i] ==
-            gp.quicksum(alpha[i, tau, t, s] * x[i, tau, s] for tau in range(time)))
-            for i in range(comp) for t in range(time) for s in range(scenarios))
-        else:
-            m.addConstrs(
-            (gp.quicksum(y[j, tt, s] * A[i][j] for j in range(prod) for tt in range(t + 1)) + I[i, t, s] ==
-            gp.quicksum(alpha[i, tau, t, s] * x[i, tau, s] for tau in range(time)))
-            for i in range(comp) for t in range(time) for s in range(scenarios))
+
+    key = (lambda i, tau, t, s: alpha[i, tau, t]) if L_det else (lambda i, tau, t, s: alpha[i, tau, t, s])
+    m.addConstrs(
+        (gp.quicksum(y[j, tt, s] * A[i][j] for j in range(prod) for tt in range(t + 1)) + I[i, t, s]
+         - I0_vec[i] - float(pipeline_cum[i, t]) ==
+         gp.quicksum(key(i, tau, t, s) * x[i, tau, s] for tau in range(time)))
+        for i in range(comp) for t in range(time) for s in range(scenarios))
 
 #=========================================================================
     structure = branching_structure + [1]*(time - len(branching_structure)) 

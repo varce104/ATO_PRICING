@@ -60,6 +60,7 @@ class RunConfig:
     rh_mip_gap: float = 1e-3
     rh_sub_time: int = 60       # límite por ventana
     rh_resample: bool = False
+    rh_method: str = "MILP"  # "deterministic" | "stochastic"
 
 @dataclass
 class OutputConfig:
