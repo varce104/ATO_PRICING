@@ -5,8 +5,7 @@ from output_config.graphs.boxplot import plot_boxplot
 from output_config.graphs.candlestick import plot_candlestick_decisions
 
 from output_config.lambda_export import export_solution_to_excel_affine, export_affine_params_to_excel
-from output_config.fulfillment import demand_fulfillment, reconstruct_demand
-from output_config.kpi_performance import calculate_global_kpis, calculate_financial_kpis
+from output_config.kpi_performance import reconstruct_demand, calculate_global_kpis, calculate_financial_kpis
 import numpy as np
 
 

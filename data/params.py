@@ -50,18 +50,12 @@ def bill_of_materials(inst, comp, prod, min_use, max_use, seed, other=False):
         A = np.zeros((comp, prod), dtype=int)       
         for j in range(prod):
             k_j = np.random.randint(min_use, max_use + 1)
-            chosen_components = np.random.choice(
-                comp,
-                size=k_j,
-                replace=False)
+            chosen_components = np.random.choice(comp, size=k_j, replace=False)
             A[chosen_components, j] = 1
     else:
         for j in range(prod):
             k_j = np.random.randint(min_use, max_use + 1)
-            chosen_components = np.random.choice(
-                comp,
-                size=k_j,
-                replace=True) # False Only for 5x4, True otherwise
+            chosen_components = np.random.choice(comp, size=k_j, replace=True) # False Only for 5x4, True otherwise
             A[chosen_components, j] = 1
 
         if other:

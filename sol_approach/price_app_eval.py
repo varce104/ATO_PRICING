@@ -8,17 +8,17 @@ from models.linealization_prop import MS_linear
 from output_config.lambda_export import extract_solution_arrays_affine_w
 
 
-def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
-                ypsilon, delta, a, b, C, H, pi, branching, I0, phi_mode="eps_delta"):
+def Affine_eval(time_limit, seed, stages, scenarios, A, price, L, L_det,
+                ypsilon, delta, a, b, C, H, pi, branching, I0, phi_mode="eps_delta", pipeline=None):
     prod, pr = len(A[0]), len(price)
 
     m_af, x_af, lam_w, y_af, y_bar_af, I_af, A_out, D_term, rho_var, Gamma_var, K_feat = MS_linear_affine(
         seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0,
-        phi_mode=phi_mode)
+        phi_mode=phi_mode, pipeline=pipeline)
     
     m_af.setParam('OutputFlag', 1)
     m_af.setParam('BarHomogeneous', 1)
-    m_af.setParam('TimeLimit', 500)
+    m_af.setParam('TimeLimit', time_limit)
     m_af.optimize()
     solve_time = m_af.Runtime
 
@@ -41,7 +41,7 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
 
     m, x_vars, w_vars, y_vars, I_vars, A_out, D_term = MS_linear(
         seed, stages, scenarios, A, price, L, L_det,
-        ypsilon, delta, a, b, C, H, pi, branching, I0)
+        ypsilon, delta, a, b, C, H, pi, branching, I0, pipeline=pipeline)
 
     for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
         val = float(w_bin[j, t, p, s])
@@ -51,8 +51,9 @@ def Affine_eval(seed, stages, scenarios, A, price, L, L_det,
     print(f"[Affine eval] Obj afín: {obj_affine:.4f}")
     return m, x_vars, w_vars, y_vars, I_vars, A_out, D_term, solve_time, rho_opt, Gamma_opt
 
-def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
-                 ypsilon, delta, a, b, C, H, pi, branching, I0):
+
+def Relaxed_eval(time_limit, seed, stages, scenarios, A, price, L, L_det,
+                 ypsilon, delta, a, b, C, H, pi, branching, I0, pipeline=None):
     """
     Resuelve MS_linear con w continuo, aproxima política a binaria por argmax,
     evalúa en MS_linear con w fijo.
@@ -60,12 +61,11 @@ def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
     """
     comp, prod, pr = len(A), len(A[0]), len(price)
 
-    m_cts, _, w_cts, _, _, _, _ = MS_linear(
-        seed, stages, scenarios, A, price, L, L_det,
-        ypsilon, delta, a, b, C, H, pi, branching, I0, w_cts=True)
+    m_cts, _, w_cts, _, _, _, _ = MS_linear(seed, stages, scenarios, A, price, L, L_det,
+        ypsilon, delta, a, b, C, H, pi, branching, I0, w_cts=True, pipeline=pipeline)
     m_cts.setParam('OutputFlag', 0)
     m_cts.Params.NonConvex = 2
-    m_cts.setParam('TimeLimit', 500)
+    m_cts.setParam('TimeLimit', time_limit)
     m_cts.optimize()
     solve_time = m_cts.Runtime
 
@@ -79,9 +79,8 @@ def Relaxed_eval(seed, stages, scenarios, A, price, L, L_det,
         vals = [w_cts[j, t, p, s].X for p in range(pr)]
         w_bin[j, t, int(np.argmax(vals)), s] = 1.0
 
-    m, x_vars, w_vars, y_vars, I_vars, A_out, D_term = MS_linear(
-        seed, stages, scenarios, A, price, L, L_det,
-        ypsilon, delta, a, b, C, H, pi, branching, I0)
+    m, x_vars, w_vars, y_vars, I_vars, A_out, D_term = MS_linear(seed, stages, scenarios, A, price, L, L_det,
+        ypsilon, delta, a, b, C, H, pi, branching, I0, pipeline=pipeline)
 
     for j, t, p, s in product(range(prod), range(stages), range(pr), range(scenarios)):
         val = float(w_bin[j, t, p, s])
