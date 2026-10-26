@@ -57,8 +57,8 @@ std_delta = 2
 # PRICES
 # The discrete set of prices defined by [lb_price, ub_price] in steps of step_price.
 # i.e, the discrete set [30,50] in steps of 2: [30, 32, 34,..., 48, 50]
-lb_price = 30
-ub_price = 60
+lb_price = 40
+ub_price = 80
 step_price = 5
 #=============================================
 
@@ -72,14 +72,14 @@ a = 150
 b = 1.6
 #=============================================
 # OPTION 2: VECTOR VALUES. Assigns different demand function to each product.
-# a = [150, 120,]  
-# b = [1.6, 2.0,]
+a = [150, 120,]  
+b = [1.6, 2.0,]
 # If written as vector, the lenght should match |prod|. it can also be mixed (scalar + vector) 
 #=============================================
 # OPTION 3: RANDOM VALUES. Assigns random demand function to each product. 
 # Similar to previous, but with range for values.
-a_range=(80, 120)
-b_range=(1.2, 2.0)
+# a_range=(80, 120)
+# b_range=(1.2, 2.0)
 #=============================================
 
 
@@ -125,7 +125,7 @@ show_kpis = True   # Calculate and print KPIs for fulfillment, utilization, inve
 #=============================================
 time_limit = 600 # limit for each iteration
 seed = 40
-iter = 5 # 1 for a single instance. >2 for several (mean results, odd number recommended)
+iter = 3 # 1 for a single instance. >2 for several (mean results, odd number recommended)
 #=============================================
 
 
@@ -213,20 +213,18 @@ demand_scale_sweep = False
 # ==============================================================================
 if single:
     run_configs = [
-        RunConfig(Model="MS_linear", W_cts=True),
-        # RunConfig(Model="MS_linear", W_cts=False),
-        RunConfig(Model="RH", rh_horizon=3, rh_sub_time=120, rh_resample=True),
-        # RunConfig(Model="RH", rh_method="AF_EVAL", rh_horizon=3, rh_sub_time=120, 
-        #         phi_mode="eps_delta",      # Modo de construcción de features
-        #         rh_resample=True,          # O False, dependiendo si quieres nuevo sampling en cada ventana
-        #         ),
-        # RunConfig(Model="AF_EVAL"),
+        # RunConfig(Model="MS_linear", W_cts=True),
+        RunConfig(Model="MS_linear", W_cts=False),
+        RunConfig(Model="AF_EVAL"),
         RunConfig(Model="REL_EVAL",),
+        RunConfig(Model="RH", rh_horizon=3, rh_sub_time=120, rh_resample=True),
+        RunConfig(Model="RH_AF", rh_horizon=3, rh_sub_time=120, rh_resample=True),
+        RunConfig(Model="RH_REL", rh_horizon=3, rh_sub_time=120, rh_resample=True),
         # RunConfig(Model="BENDERS", max_iter=250,),
-        RunConfig(Model="BENDERS_SC",max_iter=250,),
+        # RunConfig(Model="BENDERS_SC",max_iter=250,),
         # RunConfig(Model="BENDERS_REL",max_iter=450,),
         # RunConfig(Model="IH",max_iter=50,),
-        RunConfig(Model="IH_SC",max_iter=250,),
+        # RunConfig(Model="IH_SC",max_iter=250,),
         # RunConfig(Model="IH_REL",max_iter=450,),
         ]
 

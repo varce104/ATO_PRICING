@@ -8,7 +8,7 @@ from sol_approach.price_app_eval import Affine_eval, Relaxed_eval
 from sol_approach.iterative_heuristic import Iter_policy, Iter_policy_strong, Iter_policy_relaxed
 from sol_approach.local_search import local_search_first_improvement
 from sol_approach.benders import benders, benders_rel
-from sol_approach.rolling_horizon import Rolling_horizon
+from sol_approach.rolling_horizon import Rolling_horizon, Rolling_horizon_aff, Rolling_horizon_rel
 
 from uncertainty_analysis.sto_computation import uncertainty_analysis
 from output_config.results_output import export
@@ -60,41 +60,42 @@ def solve(cfg):
         m, x_vars, w_vars, y_vars, I_vars, A, D_term = TS_linear(
                                                             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0, W_cts)
 #=====================================================================================================================================
-# Rolling Horizon for MS_linear
+# Rolling Horizon for MS_linear // AF_EVAL // REL_EVAL
 #=====================================================================================================================================
     elif Model == "RH":
-        # sampling = dict(inst=inst,
-        #                 lb_eps=cfg.demand.lb_epsilon, ub_eps=cfg.demand.ub_epsilon,
-        #                 mu=cfg.demand.mu_delta, std=cfg.demand.std_delta,
-        #                 lb_L=cfg.lead_times.lb_L, ub_L=cfg.lead_times.ub_L)
-        # m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Rolling_horizon(
-        #     seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
-        #     horizon=cfg.run.rh_horizon, fix_x=cfg.run.rh_fix_x,
-        #     mip_gap=cfg.run.rh_mip_gap, sub_time_limit=cfg.run.rh_sub_time,
-        #     resample=cfg.run.rh_resample, sampling=sampling)
         sampling = dict(inst=inst,
                         lb_eps=cfg.demand.lb_epsilon, ub_eps=cfg.demand.ub_epsilon,
                         mu=cfg.demand.mu_delta, std=cfg.demand.std_delta,
                         lb_L=cfg.lead_times.lb_L, ub_L=cfg.lead_times.ub_L)
-        
-        # Opciones para la heurística iterativa dentro de cada ventana
-        rh_opts = {
-            "phi_mode": cfg.run.phi_mode,
-            "max_iter": cfg.run.max_iter,
-            "time": cfg.run.rh_sub_time
-        }
-
         m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Rolling_horizon(
             seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
-            horizon=cfg.run.rh_horizon, 
-            fix_x=cfg.run.rh_fix_x,
-            mip_gap=cfg.run.rh_mip_gap, 
-            sub_time_limit=cfg.run.rh_sub_time,
-            resample=cfg.run.rh_resample, 
-            sampling=sampling,
-            rh_method=cfg.run.rh_method,   # <--- Pasamos el método (e.g., "IH" o "IH_sc")
-            rh_opts=rh_opts                # <--- Pasamos las opciones del método
-        )
+            horizon=cfg.run.rh_horizon, fix_x=cfg.run.rh_fix_x,
+            mip_gap=cfg.run.rh_mip_gap, sub_time_limit=cfg.run.rh_sub_time,
+            resample=cfg.run.rh_resample, sampling=sampling)
+
+    elif Model == "RH_AF":
+        sampling = dict(inst=inst,
+                                lb_eps=cfg.demand.lb_epsilon, ub_eps=cfg.demand.ub_epsilon,
+                                mu=cfg.demand.mu_delta, std=cfg.demand.std_delta,
+                                lb_L=cfg.lead_times.lb_L, ub_L=cfg.lead_times.ub_L)
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Rolling_horizon_aff(
+            seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
+            horizon=cfg.run.rh_horizon, fix_x=cfg.run.rh_fix_x,
+            mip_gap=cfg.run.rh_mip_gap, sub_time_limit=cfg.run.rh_sub_time,
+            resample=cfg.run.rh_resample, sampling=sampling, 
+            phi_mode=cfg.run.phi_mode)
+
+    elif Model == "RH_REL":
+        sampling = dict(inst=inst,
+                                lb_eps=cfg.demand.lb_epsilon, ub_eps=cfg.demand.ub_epsilon,
+                                mu=cfg.demand.mu_delta, std=cfg.demand.std_delta,
+                                lb_L=cfg.lead_times.lb_L, ub_L=cfg.lead_times.ub_L)
+        m, x_vars, w_vars, y_vars, I_vars, A, D_term, solve_time = Rolling_horizon_rel(
+                seed, stages, scenarios, A, price, L, det, mult, add, a, b, C, H, pi, branching, I0,
+                horizon=cfg.run.rh_horizon, fix_x=cfg.run.rh_fix_x,
+                mip_gap=cfg.run.rh_mip_gap, sub_time_limit=cfg.run.rh_sub_time,
+                resample=cfg.run.rh_resample, sampling=sampling)
+
 #=====================================================================================================================================
 # LDR pricing policy approach for MS_linear and TS_linear
 #=====================================================================================================================================

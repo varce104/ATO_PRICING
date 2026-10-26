@@ -8,7 +8,7 @@ from data.phi_features import build_phi
 
 
 def MS_linear_affine(seed, time, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
-                      branching_structure, I0=None, phi_init=None, K_feat=None, lambda_fix=False,phi_mode="eps_delta", pipeline=None):
+                      branching_structure, I0=None, phi_init=None, K_feat=None, lambda_fix=False,phi_mode="eps_delta", pipeline=None,):
     random.seed(seed)
     comp, prod = len(A), len(A[0])
     pr = len(price)

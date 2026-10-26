@@ -58,3 +58,41 @@ def build_phi(mode, time, scenarios, prod, comp, ypsilon, delta, L=None, L_det=N
                             phi[s][t].append(0)
 
     return phi, K_features
+
+def build_phi(mode, time, scenarios, prod, comp, ypsilon, delta, L=None, L_det=None):
+    if mode not in PHI_MODES:
+        raise ValueError(f"phi_mode unknown: '{mode}'. Options: {list(PHI_MODES)}")
+    cfg = PHI_MODES[mode]
+
+    if cfg["lead_time"] and L is None:
+        raise ValueError(f"phi_mode='{mode}' require lead times (L).")
+
+    # Cambio: Usar time en lugar de (time - 1) para evitar K_features=0 en ventanas Hh=1
+    K_features = time * phi_dimension(mode, prod, comp)
+
+    phi = {}
+    for s in range(scenarios):
+        phi[s] = {}
+        for t in range(time):
+            phi[s][t] = []
+            for tau in range(time): # Iterar sobre el horizonte completo
+                if tau < t:
+                    phi[s][t].append(ypsilon[s][tau])
+                    if cfg["delta"]:
+                        for j in range(prod):
+                            phi[s][t].append(delta[s][j][tau])
+                    if cfg["lead_time"]:
+                        for i in range(comp):
+                            lt_val = L[i][tau] if L_det else L[i][tau][s]
+                            phi[s][t].append(lt_val)
+                else:
+                    # Relleno de ceros para eventos aún no observados en el nodo F_{t-1}
+                    phi[s][t].append(0)
+                    if cfg["delta"]:
+                        for j in range(prod):
+                            phi[s][t].append(0)
+                    if cfg["lead_time"]:
+                        for i in range(comp):
+                            phi[s][t].append(0)
+
+    return phi, K_features
