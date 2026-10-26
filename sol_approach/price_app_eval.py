@@ -16,7 +16,7 @@ def Affine_eval(time_limit, seed, stages, scenarios, A, price, L, L_det,
         seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0,
         phi_mode=phi_mode, pipeline=pipeline)
     
-    m_af.setParam('OutputFlag', 1)
+    m_af.setParam('OutputFlag', 0)
     m_af.setParam('BarHomogeneous', 1)
     m_af.setParam('TimeLimit', time_limit)
     m_af.optimize()
@@ -48,7 +48,7 @@ def Affine_eval(time_limit, seed, stages, scenarios, A, price, L, L_det,
         w_vars[j, t, p, s].LB = val
         w_vars[j, t, p, s].UB = val
 
-    print(f"[Affine eval] Obj afín: {obj_affine:.4f}")
+    # print(f"[Affine eval] Obj afin: {obj_affine:.4f}")
     return m, x_vars, w_vars, y_vars, I_vars, A_out, D_term, solve_time, rho_opt, Gamma_opt
 
 
@@ -87,5 +87,5 @@ def Relaxed_eval(time_limit, seed, stages, scenarios, A, price, L, L_det,
         w_vars[j, t, p, s].LB = val
         w_vars[j, t, p, s].UB = val
 
-    print(f"[Relaxed eval] Obj relajado: {obj_relaxed:.4f}")
+    # print(f"[Relaxed eval] Obj relajado: {obj_relaxed:.4f}")
     return m, x_vars, w_vars, y_vars, I_vars, A_out, D_term, solve_time

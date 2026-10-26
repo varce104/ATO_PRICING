@@ -5,8 +5,6 @@ from gurobipy import GRB
 from data.generator import build_scenario_groups, epsilon_ms, delta_ms, lead_times_ms
 from models.linealization_prop import MS_linear
 from sol_approach.price_app_eval import Affine_eval, Relaxed_eval
-from sol_approach.iterative_heuristic import Iter_policy, Iter_policy_strong
-from sol_approach.benders import benders
 
 def _lead(L, L_det, i, tau, s):
     return L[i][tau] if L_det else L[i][tau][s]
@@ -131,7 +129,6 @@ def Rolling_horizon(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta,
 #========================================================================================
 # Rolling horizon applied to MS_linear. Scenario sampling for every window.
 #========================================================================================
-
 def _window_data_resampled(k, Hh, first, bw, S_w, seed_w, ypsilon, delta, L, L_det,
                            comp, prod, smp):
     """Árbol nuevo (misma topología bw) para los períodos k..k+Hh-1.
@@ -153,7 +150,6 @@ def _window_data_resampled(k, Hh, first, bw, S_w, seed_w, ypsilon, delta, L, L_d
             for ws in range(S_w):
                 L_w[i][0][ws] = L[i][k][first]
     return y_w, d_w, L_w
-
 
 def Rolling_horizon(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
                     branching, I0, horizon=3, fix_x=True, mip_gap=1e-3, sub_time_limit=60,
@@ -266,79 +262,36 @@ def Rolling_horizon(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta,
 
 
 #========================================================================================
-# Try: STANDARIZED rolling horizon. Scenario sampling for every window.
+# Rolling horizon applied to AF_EVAL. Scenario sampling for every window.
 #========================================================================================
-def _solve_window(method, args, pipe, o):
-    """args = (seed,Hh,S_w,A,price,L_w,L_det,y_w,d_w,a,b,C,H,pi_w,bw,I_start).
-    Devuelve (m, x, w, y, tiempo_previo); m=None si falla. m queda SIN optimizar."""
-    try:
-        if method == "MILP":
-            m, x, w, y, *_ = MS_linear(*args, w_cts=False, pipeline=pipe)
-            return m, x, w, y, 0.0
-        if method == "AF_EVAL":
-            r = Affine_eval(*args, phi_mode=o["phi_mode"], pipeline=pipe)
-        elif method == "REL_EVAL":
-            r = Relaxed_eval(*args, pipeline=pipe)
-        elif method == "IH":
-            r = Iter_policy(*args, max_iter=o["max_iter"], phi_mode=o["phi_mode"],
-                            plot=False, time_limit=o["time"], pipeline=pipe)
-        elif method == "IH_sc":
-            r = Iter_policy_strong(*args, max_iter=o["max_iter"], phi_mode=o["phi_mode"],
-                            plot=False, time_limit=o["time"], pipeline=pipe)
-        elif method == "BENDERS":
-            r = benders(*args, max_iter=o["max_iter"], save_history=False, plot=False,
-                        time_limit=o["time"], pipeline=pipe)
-        else:
-            raise ValueError(f"rh_method desconocido: {method}")
-        
-    except ValueError as e:       # Relaxed_eval lanza ValueError si no es óptimo
-        print(f"[RH] ventana fallida: {e}")
-        return None, None, None, None, 0.0
-    if r[0] is None:
-        return None, None, None, None, 0.0
-    return r[0], r[1], r[2], r[3], r[7]     # r[7] = solve_time en los 4 solvers
-
-
-def Rolling_horizon(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
-                    branching, I0, horizon=3, fix_x=True, mip_gap=1e-3, sub_time_limit=60,
-                    resample=False, sampling=None, rh_method="MILP", rh_opts=None):
-    if resample and sampling is None:
-        raise ValueError("resample=True requiere `sampling` (parámetros de las distribuciones).")
-    o = {"phi_mode": "eps_delta", "max_iter": 50, "time": sub_time_limit, **(rh_opts or {})}
-
+def Rolling_horizon_aff(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
+                           branching, I0, horizon=3, fix_x=True, mip_gap=1e-3, sub_time_limit=60,
+                           resample=False, sampling=None, phi_mode="eps_delta"):
     comp, prod, pr, T = len(A), len(A[0]), len(price), stages
     A_np = np.array(A, dtype=float)
     I0 = list(I0) if I0 is not None else [0.0] * comp
     structure = list(branching) + [1] * (T - len(branching))
     groups = build_scenario_groups(T, scenarios, branching)
 
-    max_L = int(np.max(np.array(L)))
-    if horizon <= max_L:
-        raise ValueError(f"horizon={horizon} <= lead time máximo ({max_L}): "
-                         f"ningún pedido de la ventana llegaría a usarse dentro de ella.")
-
     x_full = np.zeros((comp, T, scenarios))
     w_full = np.zeros((prod, T, pr, scenarios))
-    state = {}            # (k, primer_escenario_del_nodo) -> (x_hist, uso_acumulado)
+    state = {}
     solve_time = 0.0
 
     for k in range(T):
         Hh = min(horizon, T - k)
         bw = structure[k:k + Hh - 1]
         S_w = math.prod(bw)
-        print(f"[RH-{rh_method}] stage {k}: {len(groups[k])} nodos, ventana {Hh}, {S_w} escenarios")
+        print(f"[RH Affine] stage {k}: {len(groups[k])} nodos, ventana de {Hh} períodos, {S_w} esc.")
 
         for g in groups[k]:
             first = g[0]
-
-            # 1) Estado heredado del nodo padre
             if k == 0:
                 x_hist, used = np.zeros((comp, 0)), np.zeros(comp)
             else:
                 size_p = scenarios // math.prod(structure[:k - 1])
                 x_hist, used = state[(k - 1, (first // size_p) * size_p)]
 
-            # 2) Inventario inicial y pipeline de la ventana
             I_start = np.array(I0, dtype=float) - used
             pipe = np.zeros((comp, Hh))
             for i in range(comp):
@@ -349,55 +302,148 @@ def Rolling_horizon(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta,
                     elif arr - k < Hh:
                         pipe[i, arr - k] += x_hist[i, tau]
 
-            # 3) Datos de la ventana (corte o resampling)
             if resample:
                 seed_w = seed * 1_000_003 + 10_007 * k + first
-                y_w, d_w, L_w = _window_data_resampled(
-                    k, Hh, first, bw, S_w, seed_w, ypsilon, delta, L, L_det, comp, prod, sampling)
+                y_w, d_w, L_w = _window_data_resampled(k, Hh, first, bw, S_w, seed_w, ypsilon, delta, L, L_det, comp, prod, sampling)
             else:
-                y_w, d_w, L_w = _window_data(k, Hh, first, len(g) // S_w, S_w,
-                                             ypsilon, delta, L, L_det, comp, prod)
+                y_w, d_w, L_w = _window_data(k, Hh, first, len(g) // S_w, S_w, ypsilon, delta, L, L_det, comp, prod)
 
-            # 4) Resolver la ventana con el método elegido
-            m, x, w, y, t_pre = _solve_window(
-                rh_method,
-                (seed, Hh, S_w, A, price, L_w, L_det, y_w, d_w, a, b, C, H,
-                 [1.0 / S_w] * S_w, bw, list(I_start)),
-                pipe, o)
-            if m is None:
-                print(f"[RH] ventana sin solución (stage {k}, nodo {first}).")
+            # Extraemos la evaluación afín (modelo MS_linear con 'w' fijado)
+            m_eval, x, w, y, I, _, _, st_af, _, _ = Affine_eval(
+                sub_time_limit, seed, Hh, S_w, A, price, L_w, L_det, y_w, d_w, a, b, C, H,
+                [1.0 / S_w] * S_w, bw, I0=list(I_start), phi_mode=phi_mode, pipeline=pipe
+            )
+            
+            if m_eval is None:
+                print(f"[RH Affine] ventana sin solución inicial (stage {k}, nodo {first}).")
                 return (None,) * 8
 
-            for j in range(prod):                    # y[0] común al nodo
+            # Forzar no-anticipatividad de y en el nodo raíz de la ventana
+            for j in range(prod):
                 for s in range(1, S_w):
-                    m.addConstr(y[j, 0, s] == y[j, 0, 0])
+                    m_eval.addConstr(y[j, 0, s] == y[j, 0, 0])
 
-            m.setParam('OutputFlag', 0)
-            m.setParam('Threads', 1)
-            m.setParam('TimeLimit', sub_time_limit)
-            m.setParam('MIPGap', mip_gap)
-            m.optimize()
-            if m.SolCount == 0:
-                print(f"[RH] ventana sin solución (stage {k}, nodo {first}).")
+            m_eval.setParam('OutputFlag', 0)
+            m_eval.setParam('Threads', 1)
+            m_eval.setParam('TimeLimit', sub_time_limit)
+            m_eval.setParam('MIPGap', mip_gap)
+            m_eval.optimize()
+
+            if m_eval.SolCount == 0:
+                print(f"[RH Affine] evaluación sin solución (stage {k}, nodo {first}).")
                 return (None,) * 8
-            solve_time += t_pre + m.Runtime
+            solve_time += st_af + m_eval.Runtime
 
-            # 5) Implementar solo el período local 0
             x0 = np.array([x[i, 0, 0].X for i in range(comp)])
             y0 = np.array([y[j, 0, 0].X for j in range(prod)])
-
-            votes = np.zeros((prod, pr))             # voto mayoritario entre escenarios de la ventana
-            for s in range(S_w):
-                for j in range(prod):
-                    votes[j, max(range(pr), key=lambda p: w[j, 0, p, s].X)] += 1
             for j in range(prod):
-                w_full[j, k, int(votes[j].argmax()), g] = 1.0
+                p_star = max(range(pr), key=lambda p: w[j, 0, p, 0].X)
+                w_full[j, k, p_star, g] = 1.0
             x_full[:, k, g] = x0[:, None]
 
-            # 6) Estado para los hijos
             state[(k, first)] = (np.hstack([x_hist, x0[:, None]]), used + A_np @ y0)
 
-    # 7) Evaluar la política en el modelo completo sobre el árbol real
+    # Evaluación final de la política en el modelo completo
+    m_f, x_f, w_f, y_f, I_f, A_out, D_term = MS_linear(
+        seed, T, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0)
+    
+    for j in range(prod):
+        for t in range(T):
+            for p in range(pr):
+                for s in range(scenarios):
+                    v = float(w_full[j, t, p, s])
+                    w_f[j, t, p, s].LB = v
+                    w_f[j, t, p, s].UB = v
+    if fix_x:
+        for i in range(comp):
+            for t in range(T):
+                for s in range(scenarios):
+                    x_f[i, t, s].LB = x_full[i, t, s]
+                    x_f[i, t, s].UB = x_full[i, t, s]
+
+    return m_f, x_f, w_f, y_f, I_f, A_out, D_term, solve_time
+#========================================================================================
+
+
+#========================================================================================
+# Rolling horizon applied to REL_EVAL. Scenario sampling for every window.
+#========================================================================================
+def Rolling_horizon_rel(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi,
+                            branching, I0, horizon=3, fix_x=True, mip_gap=1e-3, sub_time_limit=60,
+                            resample=False, sampling=None):
+    comp, prod, pr, T = len(A), len(A[0]), len(price), stages
+    A_np = np.array(A, dtype=float)
+    I0 = list(I0) if I0 is not None else [0.0] * comp
+    structure = list(branching) + [1] * (T - len(branching))
+    groups = build_scenario_groups(T, scenarios, branching)
+
+    x_full = np.zeros((comp, T, scenarios))
+    w_full = np.zeros((prod, T, pr, scenarios))
+    state = {}
+    solve_time = 0.0
+
+    for k in range(T):
+        Hh = min(horizon, T - k)
+        bw = structure[k:k + Hh - 1]
+        S_w = math.prod(bw)
+        print(f"[RH Relaxed] stage {k}: {len(groups[k])} nodos, ventana de {Hh} períodos, {S_w} esc.")
+
+        for g in groups[k]:
+            first = g[0]
+            if k == 0:
+                x_hist, used = np.zeros((comp, 0)), np.zeros(comp)
+            else:
+                size_p = scenarios // math.prod(structure[:k - 1])
+                x_hist, used = state[(k - 1, (first // size_p) * size_p)]
+
+            I_start = np.array(I0, dtype=float) - used
+            pipe = np.zeros((comp, Hh))
+            for i in range(comp):
+                for tau in range(k):
+                    arr = tau + _lead(L, L_det, i, tau, first)
+                    if arr < k:
+                        I_start[i] += x_hist[i, tau]
+                    elif arr - k < Hh:
+                        pipe[i, arr - k] += x_hist[i, tau]
+
+            if resample:
+                seed_w = seed * 1_000_003 + 10_007 * k + first
+                y_w, d_w, L_w = _window_data_resampled(k, Hh, first, bw, S_w, seed_w, ypsilon, delta, L, L_det, comp, prod, sampling)
+            else:
+                y_w, d_w, L_w = _window_data(k, Hh, first, len(g) // S_w, S_w, ypsilon, delta, L, L_det, comp, prod)
+
+            # Extraemos la evaluación relajada (modelo MS_linear con 'w' fijado al argmax)
+            m_eval, x, w, y, I, _, _, st_rel = Relaxed_eval(
+                sub_time_limit, seed, Hh, S_w, A, price, L_w, L_det, y_w, d_w, a, b, C, H,
+                [1.0 / S_w] * S_w, bw, I0=list(I_start), pipeline=pipe
+            )
+            
+            # Forzar no-anticipatividad de y
+            for j in range(prod):
+                for s in range(1, S_w):
+                    m_eval.addConstr(y[j, 0, s] == y[j, 0, 0])
+
+            m_eval.setParam('OutputFlag', 0)
+            m_eval.setParam('Threads', 1)
+            m_eval.setParam('TimeLimit', sub_time_limit)
+            m_eval.setParam('MIPGap', mip_gap)
+            m_eval.optimize()
+
+            if m_eval.SolCount == 0:
+                print(f"[RH Relaxed] evaluación sin solución (stage {k}, nodo {first}).")
+                return (None,) * 8
+            solve_time += st_rel + m_eval.Runtime
+
+            x0 = np.array([x[i, 0, 0].X for i in range(comp)])
+            y0 = np.array([y[j, 0, 0].X for j in range(prod)])
+            for j in range(prod):
+                p_star = max(range(pr), key=lambda p: w[j, 0, p, 0].X)
+                w_full[j, k, p_star, g] = 1.0
+            x_full[:, k, g] = x0[:, None]
+
+            state[(k, first)] = (np.hstack([x_hist, x0[:, None]]), used + A_np @ y0)
+
+    # Evaluación final
     m_f, x_f, w_f, y_f, I_f, A_out, D_term = MS_linear(
         seed, T, scenarios, A, price, L, L_det, ypsilon, delta, a, b, C, H, pi, branching, I0)
     for j in range(prod):
@@ -416,4 +462,3 @@ def Rolling_horizon(seed, stages, scenarios, A, price, L, L_det, ypsilon, delta,
 
     return m_f, x_f, w_f, y_f, I_f, A_out, D_term, solve_time
 #========================================================================================
-
